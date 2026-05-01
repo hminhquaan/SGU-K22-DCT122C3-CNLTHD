@@ -195,15 +195,29 @@ class CheckoutForm(forms.Form):
         district = cleaned_data.get("district", "").strip()
         ward = cleaned_data.get("ward", "").strip()
         province = cleaned_data.get("province", "").strip()
+        # Prefer structured street address when all parts present
+        delivery_place_name = cleaned_data.get("delivery_place_name", "").strip()
+        delivery_place_id = cleaned_data.get("delivery_place_id", "").strip()
+        delivery_map_provider = cleaned_data.get("delivery_map_provider", "").strip()
+        lat = cleaned_data.get("delivery_latitude")
+        lon = cleaned_data.get("delivery_longitude")
+
         if street_address and district and ward and province:
             cleaned_data["shipping_address"] = ", ".join([street_address, ward, district, province])
+        elif delivery_place_id:
+            # If a place_id from Google (or other provider) exists, accept it
+            cleaned_data["shipping_address"] = delivery_place_name or cleaned_data.get("address_lookup", "")
+        elif lat and lon:
+            # coordinates provided (map pick) - accept with best-effort address text
+            cleaned_data["shipping_address"] = cleaned_data.get("address_lookup", "") or f"{lat},{lon}"
         else:
-            cleaned_data["shipping_address"] = ""
+            raise forms.ValidationError(
+                "Vui lòng cung cấp địa chỉ giao hàng đầy đủ (số nhà, phường/xã, quận/huyện, tỉnh/thành) hoặc chọn vị trí trên bản đồ."
+            )
 
-        delivery_place_name = cleaned_data.get("delivery_place_name", "").strip()
         cleaned_data["delivery_place_name"] = delivery_place_name
-        cleaned_data["delivery_place_id"] = cleaned_data.get("delivery_place_id", "").strip()
-        cleaned_data["delivery_map_provider"] = cleaned_data.get("delivery_map_provider", "").strip()
+        cleaned_data["delivery_place_id"] = delivery_place_id
+        cleaned_data["delivery_map_provider"] = delivery_map_provider
         return cleaned_data
 
 
