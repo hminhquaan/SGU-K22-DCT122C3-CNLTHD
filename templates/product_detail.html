@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} | ZENITH FITNESS{% endblock %}
+{% block content %}
+<section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div class="grid gap-10 lg:grid-cols-2">
+        <div class="overflow-hidden rounded-[2rem] bg-slate-50">
+            {% if product.image %}
+                <img src="{{ product.image.url }}" alt="{{ product.name }}" class="h-full w-full object-cover">
+            {% else %}
+                <div class="flex min-h-[420px] items-center justify-center bg-gradient-to-br from-orange-50 to-white text-accent">
+                    <div class="text-center">
+                        <div class="text-sm font-semibold uppercase tracking-[0.28em]">ZENITH FITNESS</div>
+                        <div class="mt-3 text-4xl font-extrabold">No Image</div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        <div>
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-accent">{{ product.category.name }}</p>
+            <h1 class="mt-2 text-4xl font-extrabold text-slate-900">{{ product.name }}</h1>
+            <div class="mt-5 inline-flex rounded-full bg-orange-50 px-4 py-2 text-lg font-extrabold text-accent">{{ product.price }} đ</div>
+            <p class="mt-6 text-slate-600">{{ product.description }}</p>
+            <div class="mt-6 text-sm text-slate-500">Tồn kho: <span class="font-semibold text-slate-900">{{ product.stock }}</span></div>
+            <form action="{% url 'add_to_cart' product.id %}" method="post" class="mt-8 flex flex-wrap items-center gap-3">
+                {% csrf_token %}
+                <input type="number" name="quantity" value="1" min="1" class="w-24 rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-accent">
+                <button type="submit" class="float-cta rounded-2xl bg-accent px-6 py-3 font-bold text-white">Thêm vào giỏ</button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}ZENITH FITNESS | Dụng cụ thể thao{% endblock %}
+{% block content %}
+<section class="bg-gradient-to-br from-accent to-[#ff8a33] text-white">
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-24">
+        <div class="flex flex-col justify-center">
+            <span class="mb-4 inline-flex w-fit rounded-full bg-white/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em]">Dụng cụ thể thao</span>
+            <h1 class="max-w-xl text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl">Mua sắm nhanh, xem sản phẩm rõ ràng, đặt hàng thuận tiện.</h1>
+            <p class="mt-5 max-w-lg text-base text-white/90 sm:text-lg">Từ gym, yoga đến chạy bộ, bạn có thể tìm và chọn sản phẩm theo cách rất gọn gàng.</p>
+            <div class="mt-8 flex flex-wrap gap-4">
+                <a href="#products" class="rounded-full bg-white px-6 py-3 text-sm font-bold text-accent shadow-lg transition hover:scale-105">Xem ngay</a>
+                <a href="{% url 'view_cart' %}" class="rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">Giỏ hàng</a>
+            </div>
+        </div>
+        <div class="relative">
+            <div class="absolute inset-0 rounded-[2rem] bg-white/10 blur-3xl"></div>
+            <div class="relative overflow-hidden rounded-[2rem] border border-white/15 bg-white/10 p-6 shadow-2xl backdrop-blur">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="rounded-3xl bg-white/15 p-5">
+                        <div class="text-sm text-white/70">Giao nhanh</div>
+                        <div class="mt-2 text-2xl font-extrabold">24h</div>
+                    </div>
+                    <div class="rounded-3xl bg-white p-5 text-slate-900">
+                        <div class="text-sm text-slate-500">Ưu đãi</div>
+                        <div class="mt-2 text-2xl font-extrabold text-accent">-15%</div>
+                    </div>
+                    <div class="col-span-2 rounded-3xl bg-white/15 p-5">
+                        <div class="text-sm text-white/70">Bộ sưu tập mới</div>
+                        <div class="mt-2 text-3xl font-extrabold">Dụng cụ tập luyện tối ưu cho phòng tập tại nhà.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="products" class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+    <div class="mb-8 flex items-end justify-between gap-4">
+        <div>
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Sản phẩm</p>
+            <h2 class="mt-2 text-3xl font-extrabold text-slate-900">Danh sách dụng cụ thể thao</h2>
+        </div>
+    </div>
+
+    <form method="get" class="mb-6 grid gap-3 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm sm:grid-cols-[1fr_auto]">
+        <input type="text" name="q" value="{{ search_query }}" placeholder="Tìm sản phẩm theo tên..." class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-accent">
+        {% if selected_category %}
+            <input type="hidden" name="category" value="{{ selected_category.slug }}">
+        {% endif %}
+        <input type="hidden" name="sort" value="{{ sort_option }}">
+        <button type="submit" class="float-cta rounded-2xl bg-accent px-6 py-3 text-sm font-bold text-white">Tìm kiếm</button>
+    </form>
+
+    <div class="mb-4 flex flex-wrap gap-3">
+        <a href="{% url 'product_list' %}?sort={{ sort_option }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="rounded-full px-4 py-2 text-sm font-semibold transition {% if not selected_category and not search_query %}bg-accent text-white shadow-glow{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">Tất cả</a>
+        {% for category in categories %}
+            <a href="{% url 'category_detail' category.slug %}?sort={{ sort_option }}" class="rounded-full px-4 py-2 text-sm font-semibold transition {% if selected_category and selected_category.slug == category.slug %}bg-accent text-white shadow-glow{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                {{ category.name }}
+            </a>
+        {% endfor %}
+    </div>
+
+    <div class="mb-8 flex flex-wrap items-center gap-3 text-sm">
+        <span class="font-semibold text-slate-500">Sắp xếp:</span>
+        <a href="{% url 'product_list' %}?sort=newest{% if selected_category %}&category={{ selected_category.slug }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="rounded-full px-4 py-2 font-semibold transition {% if sort_option == 'newest' %}bg-slate-900 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">Mới nhất</a>
+        <a href="{% url 'product_list' %}?sort=price_asc{% if selected_category %}&category={{ selected_category.slug }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="rounded-full px-4 py-2 font-semibold transition {% if sort_option == 'price_asc' %}bg-slate-900 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">Giá tăng dần</a>
+        <a href="{% url 'product_list' %}?sort=price_desc{% if selected_category %}&category={{ selected_category.slug }}{% endif %}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="rounded-full px-4 py-2 font-semibold transition {% if sort_option == 'price_desc' %}bg-slate-900 text-white{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">Giá giảm dần</a>
+    </div>
+
+    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {% for product in products %}
+            <article class="group overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.12)]">
+                <a href="{% url 'product_detail' product.slug %}" class="block">
+                    <div class="relative aspect-[4/3] overflow-hidden bg-slate-50">
+                        {% if product.image %}
+                            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="h-full w-full object-cover transition duration-500 group-hover:scale-105">
+                        {% else %}
+                            <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-50 to-white text-accent">
+                                <div class="text-center">
+                                    <div class="text-sm font-semibold uppercase tracking-[0.24em]">ZENITH</div>
+                                    <div class="mt-2 text-2xl font-extrabold">FITNESS</div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        <span class="absolute left-4 top-4 rounded-full bg-accent px-3 py-1 text-xs font-bold text-white">{{ product.category.name }}</span>
+                    </div>
+                    <div class="p-5">
+                        <h3 class="text-lg font-bold text-slate-900">{{ product.name }}</h3>
+                        <p class="mt-2 line-clamp-2 text-sm text-slate-500">{{ product.description }}</p>
+                        <div class="mt-5 flex items-center justify-between">
+                            <span class="rounded-full bg-orange-50 px-3 py-1 text-sm font-extrabold text-accent">{{ product.price }} đ</span>
+                            <span class="text-sm font-medium text-slate-400">Tồn kho: {{ product.stock }}</span>
+                        </div>
+                    </div>
+                </a>
+            </article>
+        {% empty %}
+            <div class="col-span-full rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-14 text-center text-slate-500">
+                Chưa có sản phẩm nào.
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+        <div class="mt-10 flex items-center justify-center gap-2">
+            {% if page_obj.has_previous %}
+                <a href="?{% if selected_category %}category={{ selected_category.slug }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={{ sort_option }}&page={{ page_obj.previous_page_number }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-accent hover:text-accent">Trước</a>
+            {% endif %}
+
+            <span class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+
+            {% if page_obj.has_next %}
+                <a href="?{% if selected_category %}category={{ selected_category.slug }}&{% endif %}{% if search_query %}q={{ search_query|urlencode }}&{% endif %}sort={{ sort_option }}&page={{ page_obj.next_page_number }}" class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-accent hover:text-accent">Sau</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

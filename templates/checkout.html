@@ -1,0 +1,348 @@
+{% extends 'base.html' %}
+{% block title %}Thanh toán | ZENITH FITNESS{% endblock %}
+{% block content %}
+<section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div class="mb-8">
+        <p class="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Thanh toán</p>
+        <h1 class="mt-2 text-3xl font-extrabold text-slate-900">Nhập thông tin giao hàng và thanh toán</h1>
+        <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-500">Vui lòng chọn địa chỉ giao hàng chính xác và phương thức thanh toán phù hợp trước khi xác nhận đơn.</p>
+    </div>
+
+    <div class="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+        <div class="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm">
+            <form method="post" class="space-y-5">
+                {% csrf_token %}
+                {% if checkout_form.non_field_errors %}
+                    <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ checkout_form.non_field_errors }}</div>
+                {% endif %}
+                <div>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Họ và tên</label>
+                    {{ checkout_form.full_name }}
+                    {{ checkout_form.full_name.errors }}
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-2 block text-sm font-semibold text-slate-700">Số điện thoại</label>
+                        {{ checkout_form.phone }}
+                        {{ checkout_form.phone.errors }}
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-semibold text-slate-700">Email</label>
+                        {{ checkout_form.email }}
+                        {{ checkout_form.email.errors }}
+                    </div>
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Tìm địa chỉ</label>
+                    {{ checkout_form.address_lookup }}
+                    <div class="mt-2 text-xs text-slate-500">Gõ địa chỉ hoặc chạm vào mini map để chọn vị trí chính xác.</div>
+                    <div data-address-results class="mt-3 hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"></div>
+                </div>
+                {{ checkout_form.delivery_place_name }}
+                {{ checkout_form.delivery_place_id }}
+                {{ checkout_form.delivery_map_provider }}
+                {{ checkout_form.delivery_latitude }}
+                {{ checkout_form.delivery_longitude }}
+                <div>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Số nhà, tên đường</label>
+                    {{ checkout_form.street_address }}
+                    {{ checkout_form.street_address.errors }}
+                </div>
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <div>
+                        <label class="mb-2 block text-sm font-semibold text-slate-700">Tỉnh/Thành phố</label>
+                        {{ checkout_form.province }}
+                        {{ checkout_form.province.errors }}
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-semibold text-slate-700">Quận/Huyện</label>
+                        {{ checkout_form.district }}
+                        {{ checkout_form.district.errors }}
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-semibold text-slate-700">Phường/Xã</label>
+                        {{ checkout_form.ward }}
+                        {{ checkout_form.ward.errors }}
+                    </div>
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Phương thức thanh toán</label>
+                    {{ checkout_form.payment_method }}
+                    {{ checkout_form.payment_method.errors }}
+                </div>
+                <div>
+                    <label class="mb-2 block text-sm font-semibold text-slate-700">Ghi chú đơn hàng</label>
+                    {{ checkout_form.note }}
+                    {{ checkout_form.note.errors }}
+                </div>
+                <div class="rounded-[1.5rem] bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                    Địa chỉ sẽ được ghi nhận theo từng phần để dễ đối soát và giao hàng thực tế.
+                </div>
+                <div class="rounded-[1.75rem] border border-slate-100 bg-white p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold uppercase tracking-[0.22em] text-accent">Mini map</h3>
+                            <p class="mt-2 text-sm text-slate-500">Nhấn vào bản đồ để đặt pin giao hàng, hoặc kéo pin để chỉnh vị trí.</p>
+                        </div>
+                        <button type="button" id="geo-button" class="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-accent hover:text-accent">Dùng vị trí hiện tại</button>
+                    </div>
+                    <div id="delivery-map" class="mt-4 h-72 w-full overflow-hidden rounded-[1.5rem] border border-slate-200"></div>
+                    <div id="map-status" class="mt-3 text-xs text-slate-500">Chưa chọn vị trí trên bản đồ.</div>
+                </div>
+                <button type="submit" class="float-cta w-full rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-white">Xác nhận đặt hàng</button>
+            </form>
+        </div>
+
+        <aside class="h-fit rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm">
+            <h2 class="text-xl font-bold text-slate-900">Đơn hàng của bạn</h2>
+            <div class="mt-5 space-y-4">
+                {% for item in items %}
+                    <div class="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4">
+                        <div>
+                            <div class="font-semibold text-slate-900">{{ item.product.name }}</div>
+                            <div class="mt-1 text-sm text-slate-500">SL: {{ item.quantity }}</div>
+                        </div>
+                        <div class="text-sm font-bold text-accent">{{ item.line_total }} đ</div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-6 space-y-3 text-sm text-slate-600">
+                <div class="flex items-center justify-between"><span>Tạm tính</span><span class="font-semibold text-slate-900">{{ subtotal }} đ</span></div>
+                <div class="flex items-center justify-between"><span>Phí vận chuyển</span><span class="font-semibold text-slate-900">{{ shipping_fee }} đ</span></div>
+                <div class="h-px bg-slate-100"></div>
+                <div class="flex items-center justify-between text-base"><span class="font-bold text-slate-900">Tổng thanh toán</span><span class="text-lg font-extrabold text-accent">{{ total }} đ</span></div>
+            </div>
+
+            <div class="mt-6 rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                Sau khi xác nhận, đơn hàng sẽ được tạo và bạn có thể xem lại trong trang theo dõi đơn hàng.
+            </div>
+        </aside>
+    </div>
+</section>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-84Ah0O8LzY7S2xgRw5KXK/4Jf0s0B4K6V6nXyE1v0jI=" crossorigin=""></script>
+<script>
+(() => {
+    const lookup = document.querySelector('[data-address-lookup="true"]');
+    const resultsBox = document.querySelector('[data-address-results]');
+    const streetField = document.querySelector('#id_street_address');
+    const wardField = document.querySelector('#id_ward');
+    const districtField = document.querySelector('#id_district');
+    const provinceField = document.querySelector('#id_province');
+    const placeNameField = document.querySelector('#id_delivery_place_name');
+    const placeIdField = document.querySelector('#id_delivery_place_id');
+    const mapProviderField = document.querySelector('#id_delivery_map_provider');
+    const latitudeField = document.querySelector('#id_delivery_latitude');
+    const longitudeField = document.querySelector('#id_delivery_longitude');
+    const mapStatus = document.querySelector('#map-status');
+    const geoButton = document.querySelector('#geo-button');
+    const mapElement = document.querySelector('#delivery-map');
+
+    if (!lookup || !resultsBox) {
+        return;
+    }
+
+    let timerId = null;
+    let map = null;
+    let marker = null;
+
+    const defaultCenter = [10.762622, 106.660172];
+
+    const setMapStatus = (text) => {
+        if (mapStatus) {
+            mapStatus.textContent = text;
+        }
+    };
+
+    const setLocationFields = (item) => {
+        if (placeNameField) {
+            placeNameField.value = item.detail || item.label || '';
+        }
+        if (placeIdField) {
+            placeIdField.value = item.place_id || '';
+        }
+        if (mapProviderField) {
+            mapProviderField.value = item.provider || '';
+        }
+        if (latitudeField) {
+            latitudeField.value = item.lat || '';
+        }
+        if (longitudeField) {
+            longitudeField.value = item.lon || '';
+        }
+    };
+
+    const setMarker = (lat, lng, text) => {
+        if (!map) {
+            return;
+        }
+        const position = [lat, lng];
+        if (!marker) {
+            marker = L.marker(position, { draggable: true }).addTo(map);
+            marker.on('dragend', async () => {
+                const dragged = marker.getLatLng();
+                await resolveCoordinates(dragged.lat, dragged.lng);
+            });
+        } else {
+            marker.setLatLng(position);
+        }
+        map.setView(position, Math.max(map.getZoom(), 15), { animate: true });
+        setMapStatus(text || `Đã chọn vị trí: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+    };
+
+    const resolveCoordinates = async (lat, lng) => {
+        try {
+            const response = await fetch(`{% url 'location_lookup' %}?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`);
+            const payload = await response.json();
+            const detailedItem = (payload.results || [])[0];
+            if (detailedItem) {
+                lookup.value = detailedItem.detail || detailedItem.label || lookup.value;
+                fillFields(detailedItem);
+                setLocationFields({ ...detailedItem, lat: String(lat), lon: String(lng) });
+                setMarker(Number(lat), Number(lng), detailedItem.detail || detailedItem.label);
+                return;
+            }
+        } catch (error) {
+            // ignore and keep raw coordinates
+        }
+        setLocationFields({ lat: String(lat), lon: String(lng), provider: 'map' });
+        setMapStatus(`Đã chọn vị trí: ${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}`);
+    };
+
+    const hideResults = () => {
+        resultsBox.innerHTML = '';
+        resultsBox.classList.add('hidden');
+    };
+
+    const fillFields = (item) => {
+        if (streetField && item.street_address) {
+            streetField.value = item.street_address;
+        }
+        if (wardField && item.ward) {
+            wardField.value = item.ward;
+        }
+        if (districtField && item.district) {
+            districtField.value = item.district;
+        }
+        if (provinceField && item.province) {
+            const option = Array.from(provinceField.options).find((entry) => entry.value === item.province);
+            if (option) {
+                provinceField.value = item.province;
+            }
+        }
+        setLocationFields(item);
+    };
+
+    const resolveAndFill = async (item) => {
+        if (item.provider === 'google' && item.place_id) {
+            try {
+                const response = await fetch(`{% url 'address_suggestions' %}?place_id=${encodeURIComponent(item.place_id)}`);
+                const payload = await response.json();
+                const detailedItem = (payload.results || [])[0];
+                if (detailedItem) {
+                    lookup.value = detailedItem.detail || detailedItem.label || lookup.value;
+                    fillFields(detailedItem);
+                    if (detailedItem.lat && detailedItem.lon) {
+                        setMarker(Number(detailedItem.lat), Number(detailedItem.lon), detailedItem.detail || detailedItem.label);
+                    }
+                    hideResults();
+                    return;
+                }
+            } catch (error) {
+                // Fall through to the preview item below.
+            }
+        }
+
+        lookup.value = item.detail || item.label || lookup.value;
+        fillFields(item);
+        if (item.lat && item.lon) {
+            setMarker(Number(item.lat), Number(item.lon), item.detail || item.label);
+        }
+        hideResults();
+    };
+
+    const renderResults = (items) => {
+        if (!items.length) {
+            hideResults();
+            return;
+        }
+
+        resultsBox.innerHTML = items.map((item, index) => `
+            <button type="button" class="w-full rounded-xl px-4 py-3 text-left text-sm transition hover:bg-slate-50 ${index > 0 ? 'mt-1' : ''}" data-address-item="${index}">
+                <div class="font-semibold text-slate-900">${item.label}</div>
+                <div class="mt-1 text-xs text-slate-500">${item.detail || ''}</div>
+                <div class="mt-1 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-slate-400">
+                    ${item.place_type ? `<span>${item.place_type}</span>` : ''}
+                    ${item.provider === 'google' ? '<span>Google Maps</span>' : ''}
+                    ${item.lat && item.lon ? `<span>${item.lat}, ${item.lon}</span>` : ''}
+                </div>
+            </button>
+        `).join('');
+        resultsBox.classList.remove('hidden');
+
+        items.forEach((item, index) => {
+            const button = resultsBox.querySelector(`[data-address-item="${index}"]`);
+            if (button) {
+                button.addEventListener('click', () => {
+                    resolveAndFill(item);
+                });
+            }
+        });
+    };
+
+    lookup.addEventListener('input', () => {
+        const query = lookup.value.trim();
+        window.clearTimeout(timerId);
+        if (query.length < 3) {
+            hideResults();
+            return;
+        }
+
+        timerId = window.setTimeout(async () => {
+            try {
+                const response = await fetch(`{% url 'address_suggestions' %}?q=${encodeURIComponent(query)}`);
+                const payload = await response.json();
+                renderResults(payload.results || []);
+            } catch (error) {
+                hideResults();
+            }
+        }, 250);
+    });
+
+    if (mapElement && window.L) {
+        map = L.map(mapElement, { scrollWheelZoom: true }).setView(defaultCenter, 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(map);
+
+        map.on('click', async (event) => {
+            await resolveCoordinates(event.latlng.lat, event.latlng.lng);
+        });
+
+        setMapStatus('Chạm vào bản đồ để đặt pin giao hàng.');
+    }
+
+    if (geoButton && navigator.geolocation) {
+        geoButton.addEventListener('click', () => {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    await resolveCoordinates(position.coords.latitude, position.coords.longitude);
+                },
+                () => {
+                    setMapStatus('Không lấy được vị trí hiện tại. Hãy chọn trực tiếp trên bản đồ.');
+                },
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        if (!resultsBox.contains(event.target) && event.target !== lookup) {
+            hideResults();
+        }
+    });
+})();
+</script>
+{% endblock %}

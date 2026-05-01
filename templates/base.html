@@ -1,0 +1,108 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ZENITH FITNESS{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        accent: '#FF6B00',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        glow: '0 18px 50px rgba(255, 107, 0, 0.18)',
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .float-cta { transition: transform .2s ease, box-shadow .2s ease; }
+        .float-cta:hover { transform: translateY(-2px); box-shadow: 0 18px 50px rgba(255, 107, 0, 0.2); }
+        .cart-badge-pulse { animation: pulse-badge .9s ease; }
+        @keyframes pulse-badge {
+            0% { transform: scale(0.92); }
+            55% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-white text-slate-900 font-sans antialiased">
+<div class="min-h-screen flex flex-col">
+    <nav class="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur">
+        <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+            <a href="{% url 'home' %}" class="flex items-center gap-3">
+                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-white shadow-glow">
+                    <span class="text-lg font-extrabold">Z</span>
+                </div>
+                <div>
+                    <div class="text-lg font-extrabold tracking-[0.18em] text-accent">ZENITH FITNESS</div>
+                    <div class="text-xs uppercase tracking-[0.28em] text-slate-400">Dụng cụ thể thao</div>
+                </div>
+            </a>
+
+            <div class="flex flex-wrap items-center gap-2 lg:justify-center">
+                <a href="{% url 'home' %}" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Trang chủ</a>
+                <a href="{% url 'product_list' %}" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Sản phẩm</a>
+                {% if request.user.is_authenticated %}
+                    <a href="{% url 'order_list' %}" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Đơn hàng</a>
+                    <a href="{% url 'order_tracking' %}" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Theo dõi</a>
+                    <span class="hidden rounded-full bg-slate-50 px-4 py-2 text-sm font-medium text-slate-500 lg:inline-flex">Xin chào, {{ request.user.username }}</span>
+                    {% if request.user.profile %}
+                        <span class="hidden rounded-full bg-orange-50 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-accent lg:inline-flex">{{ request.user.profile.get_role_display }}</span>
+                    {% endif %}
+                    <form action="{% url 'logout' %}" method="post" class="inline-flex">
+                        {% csrf_token %}
+                        <button type="submit" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Đăng xuất</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Đăng nhập</a>
+                    <a href="{% url 'register' %}" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Đăng ký</a>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center justify-between gap-3 lg:justify-end">
+                <a href="{% url 'view_cart' %}" class="float-cta relative inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13 5.4 5M7 13l-1.17 2.35A1 1 0 0 0 6.72 17h9.56a1 1 0 0 0 .95-.68L18 13M9 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
+                    </svg>
+                    <span>Giỏ hàng</span>
+                    <span class="cart-badge-pulse min-w-6 rounded-full bg-white px-2 py-0.5 text-center text-xs font-bold text-accent">{{ cart_count|default:0 }}</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1">
+        {% if messages %}
+            <div class="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+                {% for message in messages %}
+                    <div class="mb-3 rounded-2xl border px-4 py-3 text-sm {% if message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-700{% elif message.tags == 'error' %}border-rose-200 bg-rose-50 text-rose-700{% else %}border-amber-200 bg-amber-50 text-amber-700{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="border-t border-slate-100 bg-white">
+        <div class="mx-auto max-w-7xl px-4 py-6 text-sm text-slate-500 sm:px-6 lg:px-8">
+            © 2026 ZENITH FITNESS. Thiết kế tối giản, tập trung vào chuyển đổi.
+        </div>
+    </footer>
+</div>
+</body>
+</html>
