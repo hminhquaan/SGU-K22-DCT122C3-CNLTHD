@@ -2,7 +2,7 @@
 
 ## ZENITH FITNESS
 
-Website thương mại điện tử bán dụng cụ và phụ kiện thể thao được xây dựng bằng Django, MySQL, Tailwind CDN và Alpine.js. Dự án tập trung vào trải nghiệm mua hàng thực tế: giỏ hàng, đặt hàng, theo dõi đơn, thanh toán VNPay sandbox, phân quyền người dùng và chọn vị trí giao hàng chính xác trên mini map.
+Website thương mại điện tử bán dụng cụ và phụ kiện thể thao được xây dựng bằng Django, MySQL, Tailwind CDN và Alpine.js. Hệ thống tập trung vào trải nghiệm mua hàng thực tế và vận hành bán hàng: giỏ hàng, đặt hàng, theo dõi đơn, thanh toán VNPay sandbox, phân quyền người dùng, chọn vị trí giao hàng chính xác trên mini map và trang quản trị được thiết kế riêng cho nghiệp vụ.
 
 ## Tính năng chính
 
@@ -12,9 +12,13 @@ Website thương mại điện tử bán dụng cụ và phụ kiện thể thao
 - Theo dõi trạng thái đơn hàng và mã tracking.
 - Thanh toán VNPay sandbox, chỉ ghi nhận thành công khi có xác nhận hợp lệ.
 - Phân quyền người dùng theo vai trò `CUSTOMER`, `STAFF`, `MANAGER`.
+- Trang quản trị riêng cho sản phẩm và đơn hàng, dùng giao diện đồng bộ với website bán hàng.
+- Changelist đơn hàng/sản phẩm có badge, bảng và bộ lọc được tinh chỉnh để dễ theo dõi nghiệp vụ.
+- Form sửa đơn hàng được chia khối rõ hơn cho giao hàng, thanh toán và xử lý trạng thái.
+- Giá và tổng tiền hiển thị theo định dạng VND thống nhất trên cả storefront và admin.
 - Gợi ý địa chỉ thật khi nhập, ưu tiên Google Places nếu có `GOOGLE_MAPS_API_KEY`.
 - Mini map để chọn trực tiếp vị trí giao hàng, kéo thả pin hoặc lấy vị trí hiện tại.
-- Dữ liệu mẫu và script SQL hỗ trợ khởi tạo nhanh.
+- Script khởi tạo dữ liệu và file SQL hỗ trợ dựng hệ thống nhanh.
 
 ## Công nghệ sử dụng
 
@@ -24,6 +28,7 @@ Website thương mại điện tử bán dụng cụ và phụ kiện thể thao
 - Bản đồ: Leaflet + OpenStreetMap
 - Địa chỉ: Google Places API, Google Geocoding API, Nominatim fallback
 - Thanh toán: VNPay sandbox
+- Quản trị: Unfold Admin, Chart.js cho dashboard doanh thu, CSS tuỳ biến riêng cho trang quản trị
 
 ## Cấu trúc dự án
 
@@ -33,7 +38,8 @@ Website thương mại điện tử bán dụng cụ và phụ kiện thể thao
   - `views.py`: logic checkout, thanh toán, tracking, tra cứu địa chỉ và API hỗ trợ.
   - `forms.py`: form đăng ký, đăng nhập, checkout và validate dữ liệu.
   - `urls.py`: định tuyến cho app `shop`.
-  - `admin.py`: cấu hình trang quản trị.
+  - `admin.py`: cấu hình changelist, changeform và hành động nghiệp vụ cho sản phẩm, đơn hàng.
+  - `admin_site.py`: dashboard quản trị, số liệu doanh thu và trạng thái đơn hàng.
   - `tests.py`: test cho checkout, payment, tracking, phân quyền và địa chỉ.
   - `migrations/`: lịch sử migration của database.
 - `templates/`: giao diện HTML.
@@ -44,8 +50,10 @@ Website thương mại điện tử bán dụng cụ và phụ kiện thể thao
   - `payment.html`: trang trung gian thanh toán.
   - `orders.html`, `order_detail.html`: tra cứu trạng thái và danh sách đơn.
   - `product_detail.html`, `category_detail.html`: trang sản phẩm và danh mục.
+  - `admin/`: giao diện quản trị riêng, gồm dashboard, shell admin và trang đăng nhập.
   - `registration/`: các trang đăng nhập, đăng ký, khôi phục mật khẩu nếu có.
 - `static/`: tài nguyên tĩnh như CSS, JS, ảnh hoặc file front-end khác.
+  - `admin/zenith-admin.css`: stylesheet riêng cho admin, đồng bộ bảng, badge, form và dashboard.
 - `seed_demo_data.sql`: script SQL để tạo bảng và dữ liệu mẫu nhanh.
 - `requirements.txt`: các thư viện Python cần cài.
 - `.env.example`: file mẫu biến môi trường.
@@ -107,7 +115,7 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
-### 6. Nạp dữ liệu mẫu
+### 6. Nạp dữ liệu khởi tạo
 
 Bạn có thể dùng một trong hai cách sau:
 
@@ -142,6 +150,13 @@ python manage.py test shop.tests
 - Vào checkout, nhập thông tin nhận hàng và chọn vị trí giao hàng trên mini map.
 - Nếu thanh toán online, hệ thống chỉ ghi nhận đơn thành công khi VNPay xác nhận hợp lệ.
 - Người dùng có thể theo dõi trạng thái đơn hàng bằng trang tracking.
+
+## Quản trị bán hàng
+
+- Trang admin được thiết kế riêng theo nhận diện ZENITH FITNESS, không dùng cảm giác mặc định của Django admin.
+- Danh sách sản phẩm và đơn hàng hiển thị theo badge, bảng và bộ lọc đã tinh chỉnh cho nghiệp vụ bán hàng.
+- Trang sửa đơn hàng tách rõ các khối khách hàng, địa chỉ giao hàng, vị trí giao hàng, thanh toán và mốc xử lý.
+- Dashboard quản trị hiển thị doanh thu, trạng thái đơn và danh sách đơn gần đây theo dữ liệu thực.
 
 ##  Thông tin chung
 * **Giảng viên hướng dẫn:**  Đỗ Như Loan
