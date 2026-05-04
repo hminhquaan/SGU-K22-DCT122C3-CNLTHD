@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load money %}
 {% block title %}ZENITH FITNESS | Dụng cụ thể thao{% endblock %}
 {% block content %}
 <section class="bg-gradient-to-br from-accent to-[#ff8a33] text-white">
@@ -88,7 +89,7 @@
                         <h3 class="text-lg font-bold text-slate-900">{{ product.name }}</h3>
                         <p class="mt-2 line-clamp-2 text-sm text-slate-500">{{ product.description }}</p>
                         <div class="mt-5 flex items-center justify-between">
-                            <span class="rounded-full bg-orange-50 px-3 py-1 text-sm font-extrabold text-accent">{{ product.price }} đ</span>
+                            <span class="rounded-full bg-orange-50 px-3 py-1 text-sm font-extrabold text-accent">{{ product.price|vnd }}</span>
                             <span class="text-sm font-medium text-slate-400">Tồn kho: {{ product.stock }}</span>
                         </div>
                     </div>

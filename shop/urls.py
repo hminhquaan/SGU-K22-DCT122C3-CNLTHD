@@ -17,6 +17,7 @@ urlpatterns = [
     path("orders/<int:order_id>/", views.order_detail, name="order_detail"),
     path("orders/<int:order_id>/payment/", views.order_payment, name="order_payment"),
     path("orders/<int:order_id>/payment/cancel/", views.order_payment_cancel, name="order_payment_cancel"),
+    path("payments/sandbox/<str:method>/<int:order_id>/", views.payment_sandbox, name="payment_sandbox"),
     path("payments/vnpay/return/", views.vnpay_return, name="vnpay_return"),
     path("payments/vnpay/ipn/", views.vnpay_ipn, name="vnpay_ipn"),
     path("api/address-suggestions/", views.address_suggestions, name="address_suggestions"),

@@ -40,9 +40,9 @@ Website thương mại điện tử bán dụng cụ và phụ kiện thể thao
   - `base.html`: layout chung.
   - `home.html`, `index.html`: trang chủ.
   - `cart.html`: giỏ hàng.
-  - `checkout.html`: trang thanh toán và mini map chọn vị trí.
+  - `checkout.html`: trang thanh toán (địa chỉ gợi ý + lưu tọa độ ngầm).
   - `payment.html`: trang trung gian thanh toán.
-  - `orders.html`, `order_detail.html`, `tracking.html`: danh sách và theo dõi đơn.
+  - `orders.html`, `order_detail.html`: tra cứu trạng thái và danh sách đơn.
   - `product_detail.html`, `category_detail.html`: trang sản phẩm và danh mục.
   - `registration/`: các trang đăng nhập, đăng ký, khôi phục mật khẩu nếu có.
 - `static/`: tài nguyên tĩnh như CSS, JS, ảnh hoặc file front-end khác.
@@ -54,7 +54,7 @@ Website thương mại điện tử bán dụng cụ và phụ kiện thể thao
 
 - Python 3.10+.
 - MySQL 8+.
-- Trình duyệt hiện đại để dùng giao diện và bản đồ.
+- Trình duyệt hiện đại để dùng giao diện.
 
 ## Cài đặt nhanh
 
@@ -147,7 +147,7 @@ python manage.py test shop.tests
 * **Giảng viên hướng dẫn:**  Đỗ Như Loan
 * **Lớp:** DCT122C3
 
-###  Nhóm sinh viên thực hiện: Nhóm 3
+###  Nhóm sinh viên thực hiện: Nhóm 17
 | MSSV | Họ và tên |
 | --- | --- |
 | 3122411036 | Phan Thành Đại |

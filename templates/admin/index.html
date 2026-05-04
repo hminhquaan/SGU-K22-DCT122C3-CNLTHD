@@ -1,0 +1,156 @@
+{% extends 'admin/base.html' %}
+
+{% load i18n %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+    {{ revenue_chart_labels|json_script:"revenue-chart-labels" }}
+    {{ revenue_chart_values|json_script:"revenue-chart-values" }}
+    {{ status_chart_labels|json_script:"status-chart-labels" }}
+    {{ status_chart_values|json_script:"status-chart-values" }}
+
+    <div class="space-y-8">
+        {% if dashboard_metrics %}
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                {% for metric in dashboard_metrics %}
+                    <div class="bg-white border border-base-200 rounded-xl p-4">
+                        <div class="text-sm text-base-500">{{ metric.label }}</div>
+                        <div class="mt-1 text-2xl font-semibold text-base-900">{{ metric.value_display|default:metric.value }}</div>
+                        {% if metric.note %}
+                            <div class="mt-1 text-xs text-base-400">{{ metric.note }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="bg-white border border-base-200 rounded-xl p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 class="text-base font-semibold text-base-900">Doanh thu ({{ dashboard_period_label|default:"30 ngày" }})</h2>
+                    <div class="text-xs text-base-400">Theo đơn đã thanh toán</div>
+                </div>
+                <div class="mt-3 h-64">
+                    <canvas id="revenueChart" class="!h-full !w-full"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white border border-base-200 rounded-xl p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 class="text-base font-semibold text-base-900">Trạng thái đơn</h2>
+                    <div class="text-xs text-base-400">Tổng quan hiện tại</div>
+                </div>
+                <div class="mt-3 h-64">
+                    <canvas id="statusChart" class="!h-full !w-full"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col lg:flex-row lg:gap-8">
+            <div class="grow">
+                {% include "unfold/helpers/app_list_default.html" %}
+            </div>
+
+            {% include "unfold/helpers/history.html" %}
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            if (!window.Chart) return;
+
+            const rootStyles = getComputedStyle(document.documentElement);
+            const primaryTriplet = (rootStyles.getPropertyValue('--color-primary-500') || '').trim() || '255 107 0';
+            const rgbaFromTriplet = (triplet, alpha) => {
+                const parts = String(triplet).trim().split(/\s+/).map(Number);
+                if (parts.length < 3 || parts.some((v) => Number.isNaN(v))) {
+                    return `rgba(255, 107, 0, ${alpha})`;
+                }
+                const [r, g, b] = parts;
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            };
+            const primaryColor = rgbaFromTriplet(primaryTriplet, 1);
+
+            const revenueLabels = JSON.parse(document.getElementById('revenue-chart-labels').textContent);
+            const revenueValues = JSON.parse(document.getElementById('revenue-chart-values').textContent);
+            const statusLabels = JSON.parse(document.getElementById('status-chart-labels').textContent);
+            const statusValues = JSON.parse(document.getElementById('status-chart-values').textContent);
+
+            const revenueCanvas = document.getElementById('revenueChart');
+            if (revenueCanvas) {
+                new Chart(revenueCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: revenueLabels,
+                        datasets: [{
+                            label: 'Doanh thu',
+                            data: revenueValues,
+                            tension: 0.3,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            borderColor: primaryColor,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => {
+                                        const value = Number(ctx.parsed.y || 0);
+                                        return value.toLocaleString('vi-VN') + ' ₫';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+                            y: { ticks: { callback: (v) => Number(v).toLocaleString('vi-VN') } }
+                        }
+                    }
+                });
+            }
+
+            const statusCanvas = document.getElementById('statusChart');
+            if (statusCanvas) {
+                new Chart(statusCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: statusLabels,
+                        datasets: [{
+                            data: statusValues,
+                            borderWidth: 0,
+                            backgroundColor: [
+                                rgbaFromTriplet(primaryTriplet, 0.95),
+                                rgbaFromTriplet(primaryTriplet, 0.75),
+                                rgbaFromTriplet(primaryTriplet, 0.55),
+                                rgbaFromTriplet(primaryTriplet, 0.35),
+                                rgbaFromTriplet(primaryTriplet, 0.2),
+                            ],
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
+        })();
+    </script>
+{% endblock %}

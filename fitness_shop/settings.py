@@ -25,6 +25,7 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -115,3 +116,13 @@ LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+UNFOLD = {
+    "SITE_TITLE": "ZENITH FITNESS",
+    "SITE_HEADER": "ZENITH FITNESS",
+    "SITE_SUBHEADER": "Quản trị bán hàng",
+    "SITE_URL": "/",
+    "STYLES": [
+        "unfold/zenith.css",
+    ],
+}

@@ -160,6 +160,7 @@ class Order(models.Model):
     shipping_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    customer_payment_notified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -317,8 +318,18 @@ class Order(models.Model):
 
     def mark_status(self, status):
         now = timezone.now()
-        if status == self.STATUS_CANCELLED:
+        if status == self.STATUS_CANCELLED and self.order_status != self.STATUS_CANCELLED:
             self.restore_inventory_and_cart()
+
+        update_fields = [
+            "order_status",
+            "confirmed_at",
+            "shipping_at",
+            "completed_at",
+            "cancelled_at",
+            "customer_payment_notified_at",
+            "updated_at",
+        ]
 
         self.order_status = status
         if status == self.STATUS_CONFIRMED:
@@ -331,20 +342,16 @@ class Order(models.Model):
             self.shipping_at = self.shipping_at or now
             self.completed_at = now
         elif status == self.STATUS_CANCELLED:
+            if self.is_online_payment and self.payment_status == self.PAYMENT_PENDING:
+                self.payment_status = self.PAYMENT_CANCELLED
+                update_fields.append("payment_status")
             self.cancelled_at = now
-        self.save(update_fields=[
-            "order_status",
-            "confirmed_at",
-            "shipping_at",
-            "completed_at",
-            "cancelled_at",
-            "updated_at",
-        ])
+        self.save(update_fields=update_fields)
 
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, null=True, blank=True)
     product_name = models.CharField(max_length=200)
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
     quantity = models.PositiveIntegerField()
@@ -357,11 +364,13 @@ class OrderItem(models.Model):
 class UserProfile(models.Model):
     ROLE_CUSTOMER = "CUSTOMER"
     ROLE_STAFF = "STAFF"
+    ROLE_OPERATOR = "OPERATOR"
     ROLE_MANAGER = "MANAGER"
 
     ROLE_CHOICES = [
         (ROLE_CUSTOMER, "Khách hàng"),
         (ROLE_STAFF, "Nhân viên"),
+        (ROLE_OPERATOR, "Nhân viên vận hành"),
         (ROLE_MANAGER, "Quản lý"),
     ]
 
@@ -377,7 +386,7 @@ class UserProfile(models.Model):
 
     @property
     def is_staff_role(self):
-        return self.role in {self.ROLE_STAFF, self.ROLE_MANAGER}
+        return self.role in {self.ROLE_STAFF, self.ROLE_OPERATOR, self.ROLE_MANAGER}
 
     @property
     def is_manager(self):

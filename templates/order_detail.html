@@ -1,11 +1,34 @@
 {% extends 'base.html' %}
+{% load money %}
 {% block title %}Chi tiết đơn hàng | ZENITH FITNESS{% endblock %}
 {% block content %}
 <section class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
     <div class="mb-8">
         <p class="text-sm font-semibold uppercase tracking-[0.24em] text-accent">Chi tiết đơn hàng</p>
-        <h1 class="mt-2 text-3xl font-extrabold text-slate-900">Đơn #{{ order.id }}</h1>
-        <p class="mt-2 text-sm text-slate-500">Mã đơn: <span class="font-semibold text-slate-900">{{ order.display_tracking_code }}</span></p>
+        <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <h1 class="text-3xl font-extrabold text-slate-900">Đơn #{{ order.id }}</h1>
+                <p class="mt-2 text-sm text-slate-500">Mã theo dõi: <span class="font-semibold text-slate-900">{{ order.display_tracking_code }}</span></p>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <span class="rounded-full bg-orange-50 px-4 py-2 text-sm font-extrabold text-accent">{{ order.get_order_status_display }}</span>
+                {% if order.payment_status == 'PAID' %}
+                    <span class="rounded-full bg-emerald-50 px-4 py-2 text-sm font-extrabold text-emerald-700">Đã thanh toán</span>
+                {% elif order.payment_status == 'PENDING' %}
+                    <span class="rounded-full bg-amber-50 px-4 py-2 text-sm font-extrabold text-amber-700">Chờ thanh toán</span>
+                {% elif order.payment_status == 'CANCELLED' %}
+                    <span class="rounded-full bg-rose-50 px-4 py-2 text-sm font-extrabold text-rose-700">Đã hủy</span>
+                {% else %}
+                    <span class="rounded-full bg-slate-100 px-4 py-2 text-sm font-extrabold text-slate-600">{{ order.get_payment_status_display }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mt-5 flex flex-wrap gap-2">
+            <a href="{% url 'order_list' %}?focus=lookup&tracking_code={{ order.display_tracking_code }}#lookup" class="rounded-2xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:border-accent hover:text-accent">Tra cứu trạng thái</a>
+            <a href="{% url 'order_list' %}" class="rounded-2xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-600 hover:border-accent hover:text-accent">Quay lại danh sách</a>
+        </div>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
@@ -32,15 +55,20 @@
                 </div>
             </div>
 
-            {% for item in order.items.all %}
-                <div class="flex items-center justify-between rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-sm">
-                    <div>
-                        <div class="text-lg font-bold text-slate-900">{{ item.product_name }}</div>
-                        <div class="mt-1 text-sm text-slate-500">Số lượng: {{ item.quantity }} × {{ item.unit_price }} đ</div>
-                    </div>
-                    <div class="rounded-full bg-orange-50 px-4 py-2 text-sm font-extrabold text-accent">{{ item.line_total }} đ</div>
+            <div class="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-900">Sản phẩm</h2>
+                <div class="mt-5 space-y-3">
+                    {% for item in order.items.all %}
+                        <div class="flex flex-col gap-3 rounded-[1.25rem] border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="min-w-0">
+                                <div class="truncate text-base font-bold text-slate-900">{{ item.product_name }}</div>
+                                <div class="mt-1 text-sm text-slate-500">SL: {{ item.quantity }} × {{ item.unit_price|vnd }}</div>
+                            </div>
+                            <div class="shrink-0 rounded-full bg-orange-50 px-4 py-2 text-sm font-extrabold text-accent">{{ item.line_total|vnd }}</div>
+                        </div>
+                    {% endfor %}
                 </div>
-            {% endfor %}
+            </div>
         </div>
 
         <aside class="h-fit rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm">
@@ -51,10 +79,10 @@
                 <div class="flex justify-between"><span>Trạng thái</span><span class="font-semibold text-slate-900">{{ order.get_order_status_display }}</span></div>
                 <div class="flex justify-between"><span>Phương thức thanh toán</span><span class="font-semibold text-slate-900">{{ order.get_payment_method_display }}</span></div>
                 <div class="flex justify-between"><span>Trạng thái thanh toán</span><span class="font-semibold text-slate-900">{{ order.get_payment_status_display }}</span></div>
-                <div class="flex justify-between"><span>Tạm tính</span><span class="font-semibold text-slate-900">{{ order.subtotal }} đ</span></div>
-                <div class="flex justify-between"><span>Phí ship</span><span class="font-semibold text-slate-900">{{ order.shipping_fee }} đ</span></div>
+                <div class="flex justify-between"><span>Tạm tính</span><span class="font-semibold text-slate-900">{{ order.subtotal|vnd }}</span></div>
+                <div class="flex justify-between"><span>Phí ship</span><span class="font-semibold text-slate-900">{{ order.shipping_fee|vnd }}</span></div>
                 <div class="h-px bg-slate-100"></div>
-                <div class="flex justify-between text-base"><span class="font-bold text-slate-900">Tổng cộng</span><span class="text-lg font-extrabold text-accent">{{ order.total_amount }} đ</span></div>
+                <div class="flex justify-between text-base"><span class="font-bold text-slate-900">Tổng cộng</span><span class="text-lg font-extrabold text-accent">{{ order.total_amount|vnd }}</span></div>
             </div>
             <div class="mt-6 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
                 <div class="font-semibold text-slate-900">Địa chỉ giao hàng</div>
@@ -64,8 +92,19 @@
                 <div class="font-semibold text-slate-900">Lưu ý</div>
                 <div class="mt-2 leading-6">Đơn hàng sẽ được xử lý theo từng bước: chờ xác nhận, đang giao và hoàn tất.</div>
             </div>
-            {% if order.is_online_payment and order.payment_status == 'PENDING' %}
-                <a href="{% url 'order_payment' order.id %}" class="mt-4 float-cta inline-flex w-full items-center justify-center rounded-2xl bg-accent px-5 py-3 text-sm font-bold text-white">Thanh toán ngay</a>
+
+            {% if request.user == order.user and order.is_online_payment and order.payment_status == 'PENDING' and order.order_status != 'CANCELLED' %}
+                <div class="mt-6 flex flex-col gap-3">
+                    <a href="{% url 'order_payment' order.id %}?show=1" class="float-cta inline-flex w-full items-center justify-center rounded-2xl bg-accent px-5 py-3 text-sm font-bold text-white">Thanh toán ngay</a>
+                    <form method="post" action="{% url 'order_payment_cancel' order.id %}" class="inline-flex">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full rounded-2xl border border-rose-200 px-5 py-3 text-sm font-semibold text-rose-600 hover:border-rose-400 hover:text-rose-700">Hủy thanh toán</button>
+                    </form>
+                </div>
+            {% elif is_staff_role and order.is_online_payment and order.payment_status == 'PENDING' and order.order_status != 'CANCELLED' %}
+                <div class="mt-6 flex flex-col gap-3">
+                    <a href="{% url 'order_payment' order.id %}?show=1" class="float-cta inline-flex w-full items-center justify-center rounded-2xl bg-accent px-5 py-3 text-sm font-bold text-white">Thanh toán ngay</a>
+                </div>
             {% endif %}
         </aside>
     </div>

@@ -7,6 +7,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 import re
 import json
+import unicodedata
 
 from django.conf import settings
 from django.contrib import messages
@@ -22,8 +23,54 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import CheckoutForm, RegisterForm
+from .forms import CheckoutForm, RegisterForm, VIETNAM_PROVINCES
 from .models import Cart, CartItem, Category, Order, OrderItem, Product, UserProfile
+
+
+def _normalize_ascii(text: str) -> str:
+    text = (text or "").strip()
+    if not text:
+        return ""
+    normalized = unicodedata.normalize("NFKD", text)
+    normalized = "".join(character for character in normalized if not unicodedata.combining(character))
+    normalized = normalized.lower()
+    normalized = re.sub(r"[^a-z0-9\s]", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return normalized
+
+
+_PROVINCE_CANONICAL = {
+    _normalize_ascii(value): value
+    for value, _label in VIETNAM_PROVINCES
+    if value
+}
+
+
+def _normalize_vn_province_name(province: str) -> str:
+    province = (province or "").strip()
+    if not province:
+        return ""
+
+    candidate = _normalize_ascii(province)
+    if not candidate:
+        return province
+
+    candidate = candidate.replace("thanh pho ", "").replace("tp ", "").replace("city", "").strip()
+    candidate = re.sub(r"^(tinh|province)\s+", "", candidate).strip()
+
+    if "ho chi minh" in candidate:
+        return "TP. Hồ Chí Minh"
+
+    direct = _PROVINCE_CANONICAL.get(candidate)
+    if direct:
+        return direct
+
+    candidate_no_space = candidate.replace(" ", "")
+    for key, value in _PROVINCE_CANONICAL.items():
+        if key.replace(" ", "") == candidate_no_space:
+            return value
+
+    return province
 
 
 def _cart_summary(cart):
@@ -79,6 +126,22 @@ def _build_vnpay_payment_url(request, order):
     query_params = urlencode(vnpay_params)
     secure_hash = _vnpay_sign(vnpay_params)
     return f"{settings.VNPAY_URL}?{query_params}&vnp_SecureHash={secure_hash}"
+
+
+def _is_gateway_payment_method(payment_method: str) -> bool:
+    if payment_method in {Order.METHOD_MOMO, Order.METHOD_ZALOPAY}:
+        return True
+    if payment_method == Order.METHOD_VNPAY:
+        return _vnpay_configured()
+    return False
+
+
+def _build_gateway_payment_url(request, order):
+    if order.payment_method == Order.METHOD_VNPAY:
+        return _build_vnpay_payment_url(request, order)
+    if order.payment_method in {Order.METHOD_MOMO, Order.METHOD_ZALOPAY}:
+        return request.build_absolute_uri(reverse("payment_sandbox", args=[order.payment_method.lower(), order.id]))
+    return ""
 
 
 def _verify_vnpay_return(request):
@@ -158,7 +221,7 @@ def _google_place_details_payload(place):
     route = _first_component(address_components, "route")
     ward = _first_component(address_components, "sublocality_level_1") or _first_component(address_components, "sublocality") or _first_component(address_components, "neighborhood")
     district = _first_component(address_components, "administrative_area_level_2")
-    province = _first_component(address_components, "administrative_area_level_1")
+    province = _normalize_vn_province_name(_first_component(address_components, "administrative_area_level_1"))
     postcode = _first_component(address_components, "postal_code")
     street_address = " ".join(part for part in [street_number, route] if part).strip() or place.get("name", "").strip()
     formatted_address = place.get("formatted_address", "").strip()
@@ -253,7 +316,7 @@ def _nominatim_reverse_location(lat, lon):
     road = _pick_address_value(address, ["road", "pedestrian", "footway", "path", "street"])
     ward = _pick_address_value(address, ["suburb", "quarter", "neighbourhood", "city_district", "residential", "borough"])
     district = _pick_address_value(address, ["county", "district", "city_district", "town", "city", "municipality", "village", "hamlet"])
-    province = _pick_address_value(address, ["state", "region"])
+    province = _normalize_vn_province_name(_pick_address_value(address, ["state", "region"]))
     postcode = _pick_address_value(address, ["postcode"])
     street_address = " ".join(part for part in [house_number, road] if part).strip() or payload.get("name", "").strip()
     detail = _normalize_address_line(street_address, ward, district, province, postcode) or payload.get("display_name", "")
@@ -317,7 +380,7 @@ def address_suggestions(request):
                     route = _first_component(address_components, "route")
                     ward = _first_component(address_components, "sublocality_level_1") or _first_component(address_components, "sublocality") or _first_component(address_components, "neighborhood")
                     district = _first_component(address_components, "administrative_area_level_2")
-                    province = _first_component(address_components, "administrative_area_level_1")
+                    province = _normalize_vn_province_name(_first_component(address_components, "administrative_area_level_1"))
                     postcode = _first_component(address_components, "postal_code")
                     street_address = " ".join(part for part in [street_number, route] if part).strip() or result.get("name", "").strip()
                     detail = _normalize_address_line(street_address, ward, district, province, postcode) or result.get("formatted_address", "")
@@ -377,6 +440,7 @@ def address_suggestions(request):
         suburb = _pick_address_value(address, ["suburb", "quarter", "neighbourhood", "city_district", "residential", "borough"])
         district = _pick_address_value(address, ["county", "district", "city_district", "town", "city", "municipality", "village", "hamlet"])
         province = _pick_address_value(address, ["state", "region"])
+        province = _normalize_vn_province_name(province)
         postcode = _pick_address_value(address, ["postcode"])
 
         street_address = " ".join(part for part in [house_number, road] if part).strip() or item.get("name", "").strip()
@@ -567,57 +631,114 @@ def view_cart(request):
     )
 
 
-@login_required
+def _normalize_phone_digits(phone: str) -> str:
+    return "".join(ch for ch in (phone or "") if ch.isdigit())
+
+
+def _resolve_tracking_lookup(tracking_code: str):
+    tracking_code = (tracking_code or "").strip().upper()
+    if not tracking_code:
+        return None
+    match = re.fullmatch(r"ZF(\d{6})", tracking_code)
+    if match:
+        return {"id": int(match.group(1)), "tracking_code": tracking_code}
+    return {"id": None, "tracking_code": tracking_code}
+
+
+def _orders_lookup_url(tracking_code: str = "", contact: str = "") -> str:
+    query = {"focus": "lookup"}
+    if tracking_code:
+        query["tracking_code"] = tracking_code
+    if contact:
+        query["contact"] = contact
+    return f"{reverse('order_list')}?{urlencode(query)}"
+
+
 def order_list(request):
-    if _user_has_staff_role(request.user):
-        orders = Order.objects.all().prefetch_related("items", "items__product")
-    else:
-        orders = Order.objects.filter(user=request.user).prefetch_related("items", "items__product")
-    return render(request, "orders.html", {"orders": orders})
+    user = request.user if request.user.is_authenticated else None
+    is_staff = _user_has_staff_role(user) if user else False
 
+    orders_queryset = Order.objects.select_related("user").prefetch_related("items", "items__product")
+    if user and not is_staff:
+        orders_queryset = orders_queryset.filter(user=user)
+    elif not user:
+        orders_queryset = orders_queryset.none()
 
-@login_required
-def order_tracking(request):
-    if _user_has_staff_role(request.user):
-        orders = Order.objects.all().prefetch_related("items", "items__product")
-    else:
-        orders = Order.objects.filter(user=request.user).prefetch_related("items", "items__product")
-    tracking_code = request.GET.get("tracking_code", "").strip().upper()
+    orders = orders_queryset.order_by("-created_at")
+
+    raw_tracking_code = request.GET.get("tracking_code", "")
+    raw_contact = request.GET.get("contact", "").strip()
+    lookup = _resolve_tracking_lookup(raw_tracking_code)
     focused_order = None
 
-    if tracking_code:
-        focused_order = orders.filter(tracking_code=tracking_code).first()
-        if focused_order is None:
-            match = re.fullmatch(r"ZF(\d{6})", tracking_code)
-            if match:
-                focused_order = orders.filter(id=int(match.group(1))).first()
+    if lookup:
+        tracking_code = lookup["tracking_code"]
+        order_query = Order.objects.select_related("user").prefetch_related("items", "items__product")
+        if user and not is_staff:
+            order_query = order_query.filter(user=user)
 
-    if focused_order is None:
-        focused_order = orders.first()
+        if lookup["id"] is not None:
+            candidate = order_query.filter(id=lookup["id"]).first()
+        else:
+            candidate = order_query.filter(tracking_code=tracking_code).first()
+
+        if candidate is None:
+            messages.error(request, "Không tìm thấy đơn hàng với mã bạn đã nhập.")
+        else:
+            if is_staff or (user and candidate.user_id == user.id):
+                focused_order = candidate
+            elif not user:
+                if not raw_contact:
+                    messages.error(request, "Vui lòng nhập Email hoặc SĐT để xác thực đơn hàng.")
+                else:
+                    if "@" in raw_contact:
+                        if (candidate.email or "").strip().lower() == raw_contact.lower():
+                            focused_order = candidate
+                        else:
+                            messages.error(request, "Email xác thực không khớp với đơn hàng.")
+                    else:
+                        expected = _normalize_phone_digits(candidate.phone)
+                        provided = _normalize_phone_digits(raw_contact)
+                        if expected and provided and expected.endswith(provided):
+                            focused_order = candidate
+                        else:
+                            messages.error(request, "SĐT xác thực không khớp với đơn hàng.")
+            else:
+                messages.error(request, "Bạn không có quyền xem đơn hàng này.")
 
     return render(
         request,
-        "tracking.html",
+        "orders.html",
         {
             "orders": orders,
             "focused_order": focused_order,
-            "tracking_code": tracking_code,
+            "tracking_code": (raw_tracking_code or "").strip().upper(),
+            "lookup_contact": raw_contact,
+            "is_staff_role": is_staff,
         },
     )
+
+
+def order_tracking(request):
+    tracking_code = request.GET.get("tracking_code", "").strip().upper()
+    contact = request.GET.get("contact", "").strip()
+    return redirect(_orders_lookup_url(tracking_code=tracking_code, contact=contact))
 
 
 @login_required
 def order_detail(request, order_id):
     order_queryset = Order.objects.prefetch_related("items", "items__product")
-    if not _user_has_staff_role(request.user):
+    is_staff_role = _user_has_staff_role(request.user)
+    if not is_staff_role:
         order_queryset = order_queryset.filter(user=request.user)
     order = get_object_or_404(order_queryset, id=order_id)
-    return render(request, "order_detail.html", {"order": order})
+    return render(request, "order_detail.html", {"order": order, "is_staff_role": is_staff_role})
 
 
 @login_required
 @require_POST
 def remove_from_cart(request, item_id):
+    # Remove from cart implementation
     cart = get_object_or_404(Cart, user=request.user)
     cart_item = get_object_or_404(CartItem, id=item_id, cart=cart)
     cart_item.delete()
@@ -629,6 +750,7 @@ def remove_from_cart(request, item_id):
 @transaction.atomic
 @require_POST
 def update_cart_item(request, item_id, action):
+    # Update cart item implementation
     cart = get_object_or_404(Cart.objects.select_for_update(), user=request.user)
     cart_item = get_object_or_404(CartItem.objects.select_for_update(), id=item_id, cart=cart)
 
@@ -653,6 +775,7 @@ def update_cart_item(request, item_id, action):
 
 @login_required
 def checkout(request):
+    # Checkout implementation
     cart = get_object_or_404(Cart, user=request.user)
     items, subtotal, shipping_fee, total = _cart_summary(cart)
 
@@ -717,10 +840,17 @@ def checkout(request):
 
     with transaction.atomic():
         cart = get_object_or_404(Cart.objects.select_for_update(), user=request.user)
-        items = list(cart.items.select_related("product").select_for_update())
+        cart_items = list(cart.items.select_related("product").select_for_update())
+        product_ids = [item.product_id for item in cart_items]
 
-        for item in items:
-            if item.product.stock < item.quantity:
+        locked_products = {
+            product.id: product
+            for product in Product.objects.select_for_update().filter(id__in=product_ids)
+        }
+
+        for item in cart_items:
+            locked_product = locked_products.get(item.product_id)
+            if locked_product is None or locked_product.stock < item.quantity:
                 messages.error(request, f"Sản phẩm {item.product.name} không đủ tồn kho.")
                 return redirect("view_cart")
 
@@ -741,6 +871,7 @@ def checkout(request):
             shipping_address=shipping_address,
             note=note,
             subtotal=subtotal,
+            shipping_fee=shipping_fee,
             total_amount=total_amount,
             payment_method=payment_method,
             payment_status=Order.PAYMENT_PENDING,
@@ -748,7 +879,7 @@ def checkout(request):
         )
 
         order_items = []
-        for item in items:
+        for item in cart_items:
             order_items.append(
                 OrderItem(
                     order=order,
@@ -759,7 +890,15 @@ def checkout(request):
                     line_total=item.product.price * item.quantity,
                 )
             )
-            Product.objects.filter(id=item.product.id).update(stock=F("stock") - item.quantity)
+
+            updated = Product.objects.filter(
+                id=item.product.id,
+                stock__gte=item.quantity,
+            ).update(stock=F("stock") - item.quantity)
+            if updated == 0:
+                messages.error(request, f"Sản phẩm {item.product.name} vừa hết hàng. Vui lòng thử lại.")
+                transaction.set_rollback(True)
+                return redirect("view_cart")
 
         OrderItem.objects.bulk_create(order_items)
         cart.items.all().delete()
@@ -775,29 +914,42 @@ def checkout(request):
         messages.success(request, f"Đặt hàng thành công. Mã theo dõi của bạn là {tracking_code}. Phương thức thanh toán: {payment_label}.")
     if order.is_online_payment:
         return redirect("order_payment", order_id=order.id)
-    return redirect(f"{reverse('order_tracking')}?tracking_code={tracking_code}")
+    return redirect(_orders_lookup_url(tracking_code=tracking_code))
 
 
 @login_required
 def order_payment(request, order_id):
-    order = get_object_or_404(
-        Order.objects.prefetch_related("items", "items__product"),
-        id=order_id,
-        user=request.user,
-    )
+    order_query = Order.objects.prefetch_related("items", "items__product")
+    if not _user_has_staff_role(request.user):
+        order_query = order_query.filter(user=request.user)
+    order = get_object_or_404(order_query, id=order_id)
 
     if not order.is_online_payment:
         return redirect("order_detail", order_id=order.id)
 
     payment_details = order.payment_details
+    payment_url = _build_gateway_payment_url(request, order) if _is_gateway_payment_method(order.payment_method) else ""
+
+    show_payment_page = request.GET.get("show") == "1"
+
+    if request.method == "GET" and payment_url and not show_payment_page:
+        return redirect(payment_url)
 
     if request.method == "POST":
-        order.payment_status = Order.PAYMENT_PAID
-        order.order_status = Order.STATUS_CONFIRMED
-        order.confirmed_at = order.confirmed_at or timezone.now()
-        order.save(update_fields=["payment_status", "order_status", "confirmed_at", "updated_at"])
-        messages.success(request, "Thanh toán đã được ghi nhận.")
-        return redirect(f"{reverse('order_tracking')}?tracking_code={order.display_tracking_code}")
+        if _is_gateway_payment_method(order.payment_method):
+            messages.info(request, "Cổng thanh toán sẽ tự cập nhật trạng thái khi giao dịch thành công. Vui lòng quay lại tra cứu đơn.")
+            return redirect(_orders_lookup_url(tracking_code=order.display_tracking_code))
+
+        if order.payment_status != Order.PAYMENT_PENDING or order.order_status == Order.STATUS_CANCELLED:
+            messages.info(request, "Đơn hàng đã ở trạng thái cuối cùng trước đó.")
+            return redirect(_orders_lookup_url(tracking_code=order.display_tracking_code))
+
+        if order.customer_payment_notified_at is None:
+            order.customer_payment_notified_at = timezone.now()
+            order.save(update_fields=["customer_payment_notified_at", "updated_at"])
+
+        messages.success(request, "Đã ghi nhận yêu cầu thanh toán. Bộ phận bán hàng sẽ đối soát và xác nhận đơn sớm nhất.")
+        return redirect(_orders_lookup_url(tracking_code=order.display_tracking_code))
 
     return render(
         request,
@@ -805,8 +957,53 @@ def order_payment(request, order_id):
         {
             "order": order,
             "payment_details": payment_details,
-            "tracking_url": f"{reverse('order_tracking')}?tracking_code={order.display_tracking_code}",
-            "payment_url": _build_vnpay_payment_url(request, order) if order.payment_method == Order.METHOD_VNPAY else "",
+            "tracking_url": _orders_lookup_url(tracking_code=order.display_tracking_code),
+            "payment_url": payment_url,
+        },
+    )
+
+
+@login_required
+def payment_sandbox(request, method, order_id):
+    method = (method or "").strip().upper()
+    order_query = Order.objects.prefetch_related("items", "items__product")
+    if not _user_has_staff_role(request.user):
+        order_query = order_query.filter(user=request.user)
+    order = get_object_or_404(order_query, id=order_id)
+
+    method_map = {
+        "MOMO": Order.METHOD_MOMO,
+        "ZALOPAY": Order.METHOD_ZALOPAY,
+    }
+    expected_method = method_map.get(method)
+    if expected_method is None or order.payment_method != expected_method:
+        return redirect("order_payment", order_id=order.id)
+
+    if request.method == "POST":
+        action = request.POST.get("action", "").strip().lower()
+        with transaction.atomic():
+            locked_query = Order.objects.select_for_update().prefetch_related("items", "items__product")
+            if not _user_has_staff_role(request.user):
+                locked_query = locked_query.filter(user=request.user)
+            locked = locked_query.get(id=order.id)
+            if action == "success":
+                _finalize_payment_success(locked)
+                messages.success(request, f"Thanh toán {locked.get_payment_method_display()} đã thành công.")
+            elif action == "cancel":
+                _finalize_payment_failure(locked, cancelled=True)
+                messages.warning(request, f"Bạn đã hủy thanh toán {locked.get_payment_method_display()}.")
+            else:
+                _finalize_payment_failure(locked, cancelled=False)
+                messages.warning(request, f"Thanh toán {locked.get_payment_method_display()} không thành công.")
+        return redirect(_orders_lookup_url(tracking_code=order.display_tracking_code))
+
+    return render(
+        request,
+        "payment_sandbox.html",
+        {
+            "order": order,
+            "tracking_url": _orders_lookup_url(tracking_code=order.display_tracking_code),
+            "method": method,
         },
     )
 
@@ -814,23 +1011,25 @@ def order_payment(request, order_id):
 @login_required
 @require_POST
 def order_payment_cancel(request, order_id):
-    order = get_object_or_404(
-        Order.objects.prefetch_related("items", "items__product"),
-        id=order_id,
-        user=request.user,
-    )
+    order_query = Order.objects.prefetch_related("items", "items__product")
+    if not _user_has_staff_role(request.user):
+        order_query = order_query.filter(user=request.user)
+    order = get_object_or_404(order_query, id=order_id)
 
     if not order.is_online_payment:
         return redirect("order_detail", order_id=order.id)
 
     with transaction.atomic():
-        order = Order.objects.select_for_update().prefetch_related("items", "items__product").get(id=order.id, user=request.user)
+        locked_query = Order.objects.select_for_update().prefetch_related("items", "items__product")
+        if not _user_has_staff_role(request.user):
+            locked_query = locked_query.filter(user=request.user)
+        order = locked_query.get(id=order.id)
         if _finalize_payment_failure(order, cancelled=True):
             messages.warning(request, "Bạn đã hủy thanh toán. Đơn hàng không được xác nhận.")
         else:
             messages.info(request, "Đơn hàng đã ở trạng thái cuối cùng trước đó.")
 
-    return redirect(f"{reverse('order_tracking')}?tracking_code={order.display_tracking_code}")
+    return redirect(_orders_lookup_url(tracking_code=order.display_tracking_code))
 
 
 def vnpay_return(request):
@@ -839,11 +1038,12 @@ def vnpay_return(request):
         return redirect("product_list")
 
     tracking_code = request.GET.get("vnp_TxnRef", "").strip().upper()
-    order = get_object_or_404(Order, tracking_code=tracking_code)
+    with transaction.atomic():
+        order = get_object_or_404(Order.objects.select_for_update(), tracking_code=tracking_code)
 
-    response_code = request.GET.get("vnp_ResponseCode", "")
-    transaction_status = request.GET.get("vnp_TransactionStatus", "")
-    outcome, changed = _sync_vnpay_payment(order, response_code, transaction_status)
+        response_code = request.GET.get("vnp_ResponseCode", "")
+        transaction_status = request.GET.get("vnp_TransactionStatus", "")
+        outcome, changed = _sync_vnpay_payment(order, response_code, transaction_status)
     if outcome == "success":
         if changed:
             messages.success(request, "Thanh toán VNPay đã được xác nhận. Đơn hàng đã thành công.")
@@ -854,7 +1054,7 @@ def vnpay_return(request):
     else:
         messages.warning(request, "Thanh toán chưa hoàn tất hoặc bị từ chối bởi cổng VNPay. Đơn hàng không thành công.")
 
-    return redirect(f"{reverse('order_tracking')}?tracking_code={order.display_tracking_code}")
+    return redirect(_orders_lookup_url(tracking_code=order.display_tracking_code))
 
 
 def vnpay_ipn(request):
@@ -862,13 +1062,14 @@ def vnpay_ipn(request):
         return JsonResponse({"RspCode": "97", "Message": "Invalid signature"})
 
     tracking_code = request.GET.get("vnp_TxnRef", "").strip().upper()
-    order = Order.objects.filter(tracking_code=tracking_code).first()
-    if order is None:
-        return JsonResponse({"RspCode": "01", "Message": "Order not found"})
+    with transaction.atomic():
+        order = Order.objects.select_for_update().filter(tracking_code=tracking_code).first()
+        if order is None:
+            return JsonResponse({"RspCode": "01", "Message": "Order not found"})
 
-    response_code = request.GET.get("vnp_ResponseCode", "")
-    transaction_status = request.GET.get("vnp_TransactionStatus", "")
-    outcome, changed = _sync_vnpay_payment(order, response_code, transaction_status)
+        response_code = request.GET.get("vnp_ResponseCode", "")
+        transaction_status = request.GET.get("vnp_TransactionStatus", "")
+        outcome, changed = _sync_vnpay_payment(order, response_code, transaction_status)
     if outcome == "success" and changed:
         return JsonResponse({"RspCode": "00", "Message": "Confirm Success"})
     if outcome == "success":

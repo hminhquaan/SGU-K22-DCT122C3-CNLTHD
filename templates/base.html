@@ -39,9 +39,9 @@
         }
     </style>
 </head>
-<body class="bg-white text-slate-900 font-sans antialiased">
+<body class="bg-slate-50 text-slate-900 font-sans antialiased">
 <div class="min-h-screen flex flex-col">
-    <nav class="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur">
+    <nav class="sticky top-0 z-[1100] border-b border-slate-100 bg-white/95 backdrop-blur">
         <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
             <a href="{% url 'home' %}" class="flex items-center gap-3">
                 <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-white shadow-glow">
@@ -56,12 +56,10 @@
             <div class="flex flex-wrap items-center gap-2 lg:justify-center">
                 <a href="{% url 'home' %}" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Trang chủ</a>
                 <a href="{% url 'product_list' %}" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Sản phẩm</a>
+                <a href="{% url 'order_list' %}" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Đơn hàng</a>
                 {% if request.user.is_authenticated %}
-                    <a href="{% url 'order_list' %}" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Đơn hàng</a>
-                    <a href="{% url 'order_tracking' %}" class="rounded-full px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Theo dõi</a>
                     <span class="hidden rounded-full bg-slate-50 px-4 py-2 text-sm font-medium text-slate-500 lg:inline-flex">Xin chào, {{ request.user.username }}</span>
                     {% if request.user.profile %}
-                        <span class="hidden rounded-full bg-orange-50 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-accent lg:inline-flex">{{ request.user.profile.get_role_display }}</span>
                     {% endif %}
                     <form action="{% url 'logout' %}" method="post" class="inline-flex">
                         {% csrf_token %}

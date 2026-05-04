@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load money %}
 {% block title %}Thanh toán đơn hàng | ZENITH FITNESS{% endblock %}
 {% block content %}
 <section class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
@@ -16,7 +17,7 @@
                         <div class="text-sm text-slate-500">Mã đơn</div>
                         <div class="mt-1 text-2xl font-extrabold text-slate-900">{{ order.display_tracking_code }}</div>
                     </div>
-                    <div class="rounded-full bg-orange-50 px-4 py-2 text-sm font-extrabold text-accent">{{ order.total_amount }} đ</div>
+                    <div class="rounded-full bg-orange-50 px-4 py-2 text-sm font-extrabold text-accent">{{ order.total_amount|vnd }}</div>
                 </div>
             </div>
 
@@ -48,15 +49,15 @@
             {% endif %}
 
             <div class="mt-6 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-slate-700">
-                Đây là bước ghi nhận thanh toán trong hệ thống. Nếu bạn đã thanh toán ở cổng bên ngoài, hãy bấm xác nhận bên dưới để hoàn tất trạng thái đơn.
+                Nếu bạn đã thanh toán ở cổng bên ngoài, hãy bấm xác nhận bên dưới để gửi yêu cầu đối soát. Trạng thái đơn sẽ được cập nhật sau khi hệ thống/nhân viên xác nhận (riêng VNPay sẽ tự cập nhật khi callback hợp lệ).
             </div>
 
-            {% if order.payment_method == 'VNPAY' and payment_url %}
+            {% if payment_url %}
                 <div class="mt-6 rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-slate-700">
-                    Đơn này đã sẵn sàng chuyển sang cổng VNPay. Chỉ khi cổng trả về giao dịch thành công thì đơn mới được xác nhận.
+                    Đơn này đã sẵn sàng chuyển sang cổng thanh toán. Chỉ khi cổng trả về giao dịch thành công thì đơn mới được xác nhận.
                 </div>
                 <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-                    <a href="{{ payment_url }}" class="float-cta rounded-2xl bg-accent px-6 py-3.5 text-center text-sm font-bold text-white">Đi tới cổng VNPay</a>
+                    <a href="{{ payment_url }}" target="_blank" rel="noopener" class="float-cta rounded-2xl bg-accent px-6 py-3.5 text-center text-sm font-bold text-white">Đi tới cổng thanh toán</a>
                     <form method="post" action="{% url 'order_payment_cancel' order.id %}">
                         {% csrf_token %}
                         <button type="submit" class="w-full rounded-2xl border border-rose-200 px-6 py-3.5 text-center text-sm font-semibold text-rose-600 hover:border-rose-400 hover:text-rose-700">Hủy thanh toán</button>
@@ -78,7 +79,7 @@
                 <div class="flex justify-between"><span>Khách hàng</span><span class="font-semibold text-slate-900">{{ order.full_name }}</span></div>
                 <div class="flex justify-between"><span>Phương thức</span><span class="font-semibold text-slate-900">{{ order.get_payment_method_display }}</span></div>
                 <div class="flex justify-between"><span>Trạng thái</span><span class="font-semibold text-slate-900">{{ order.get_payment_status_display }}</span></div>
-                <div class="flex justify-between"><span>Tổng thanh toán</span><span class="font-semibold text-slate-900">{{ order.total_amount }} đ</span></div>
+                <div class="flex justify-between"><span>Tổng thanh toán</span><span class="font-semibold text-slate-900">{{ order.total_amount|vnd }}</span></div>
             </div>
 
             <div class="mt-6 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
