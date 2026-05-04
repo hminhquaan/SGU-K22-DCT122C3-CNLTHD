@@ -6,12 +6,12 @@ from django.db.models.functions import Coalesce
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
-from unfold.sites import UnfoldAdminSite
+from django.contrib.admin import AdminSite
 
 from .models import Order, Product
 
 
-class ShopAdminSite(UnfoldAdminSite):
+class ShopAdminSite(AdminSite):
     site_header = "ZENITH FITNESS"
     site_title = "ZENITH FITNESS Admin"
     index_title = "Dashboard bán hàng"
