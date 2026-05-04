@@ -1,0 +1,23 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Đăng nhập quản trị | {{ site_title|default:"ZENITH FITNESS Admin" }}{% endblock %}
+
+{% block bodyclass %}{{ block.super }} zenith-login{% endblock %}
+
+{% block content %}
+<section class="zenith-auth-shell">
+    <div class="zenith-auth-card">
+        <div class="zenith-auth-badge">ZENITH FITNESS</div>
+        <h1>Đăng nhập quản trị</h1>
+        <p>Truy cập khu vực bán hàng, đơn hàng, sản phẩm và báo cáo doanh nghiệp.</p>
+        {% if form.errors %}
+            <div class="zenith-notice is-error">Tên đăng nhập hoặc mật khẩu không đúng.</div>
+        {% endif %}
+        <form method="post" class="zenith-auth-form">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="zenith-primary-button">Đăng nhập</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

@@ -12,13 +12,12 @@
 {% block content %}
     {{ revenue_chart_labels|json_script:"revenue-chart-labels" }}
     {{ revenue_chart_values|json_script:"revenue-chart-values" }}
-    {{ status_chart_labels|json_script:"status-chart-labels" }}
     {{ status_chart_values|json_script:"status-chart-values" }}
 
     <div class="zenith-dashboard">
         <section class="zenith-hero">
             <h1>{{ index_title|default:"Dashboard bán hàng" }}</h1>
-            <p>Tổng quan hiệu suất, trạng thái đơn và danh sách quản trị trong {{ dashboard_period_label|default:"30 ngày gần đây" }}.</p>
+            <p>Tổng quan doanh thu, đơn hàng và tồn kho trong {{ dashboard_period_label|default:"30 ngày gần đây" }}.</p>
         </section>
 
         {% if dashboard_metrics %}
@@ -36,36 +35,29 @@
         {% endif %}
 
         <section class="zenith-grid-2">
-            <div class="zenith-card zenith-chart">
-                <h3>Doanh thu ({{ dashboard_period_label|default:"30 ngày" }})</h3>
-                <canvas id="revenueChart"></canvas>
+            <div class="zenith-card zenith-chart zenith-chart-wide">
+                <div class="zenith-chart-head">
+                    <div>
+                        <h3>Doanh thu ({{ dashboard_period_label|default:"30 ngày" }})</h3>
+                        <p class="zenith-metric-note">Đã thanh toán, loại trừ đơn đã hủy.</p>
+                    </div>
+                    <div class="zenith-pill">{{ revenue_total_display|default:"0 ₫" }}</div>
+                </div>
+                <div class="zenith-chart-wrap">
+                    <canvas id="revenueChart"></canvas>
+                </div>
             </div>
             <div class="zenith-card zenith-chart">
-                <h3>Trạng thái đơn</h3>
-                <canvas id="statusChart"></canvas>
-            </div>
-        </section>
-
-        <section class="zenith-grid-3">
-            <div class="zenith-card">
-                <h3>Cơ cấu trạng thái</h3>
-                <ul class="zenith-list">
-                    {% for item in order_status_breakdown %}
-                        <li class="zenith-list-item">
-                            <span>{{ item.label }}</span>
-                            <span class="zenith-pill">{{ item.count }}</span>
-                        </li>
-                    {% empty %}
-                        <li class="zenith-list-item"><small>Chưa có dữ liệu trạng thái.</small></li>
-                    {% endfor %}
-                </ul>
-            </div>
-
-            <div class="zenith-card">
-                <h3>Đơn gần đây</h3>
-                <ul class="zenith-list">
+                <div class="zenith-chart-head">
+                    <div>
+                        <h3>Đơn gần đây</h3>
+                        <p class="zenith-metric-note">Theo dõi các đơn mới nhất để xử lý nhanh hơn.</p>
+                    </div>
+                    <div class="zenith-pill">{{ total_orders_count|default:0 }} đơn</div>
+                </div>
+                <ul class="zenith-list zenith-list-compact">
                     {% for order in recent_orders %}
-                        <li class="zenith-list-item">
+                        <li class="zenith-list-item zenith-list-item-tight">
                             <div>
                                 <strong>#{{ order.tracking_code|default:order.id }}</strong><br>
                                 <small>{{ order.full_name }}</small>
@@ -77,12 +69,21 @@
                     {% endfor %}
                 </ul>
             </div>
+        </section>
+
+        <section class="zenith-grid-2">
+            <div class="zenith-card">
+                <h3>Trạng thái đơn</h3>
+                <div class="zenith-chart-wrap zenith-chart-wrap-sm">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
 
             <div class="zenith-card">
                 <h3>Sản phẩm sắp hết</h3>
-                <ul class="zenith-list">
+                <ul class="zenith-list zenith-list-compact">
                     {% for product in low_stock_products %}
-                        <li class="zenith-list-item">
+                        <li class="zenith-list-item zenith-list-item-tight">
                             <span>{{ product.name }}</span>
                             <span class="zenith-pill">{{ product.stock }}</span>
                         </li>
@@ -90,28 +91,6 @@
                         <li class="zenith-list-item"><small>Kho đang ổn định.</small></li>
                     {% endfor %}
                 </ul>
-            </div>
-        </section>
-
-        <section class="zenith-grid-2">
-            <div class="zenith-card zenith-app-list">
-                <h3>Danh sách quản lý</h3>
-                {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
-            </div>
-            <div class="zenith-card">
-                <h3>Hoạt động gần đây</h3>
-                {% get_admin_log 10 as admin_log for_user user %}
-                {% if admin_log %}
-                    <ul class="zenith-list zenith-recent-actions">
-                        {% for entry in admin_log %}
-                            <li>
-                                {{ entry.action_time|date:"H:i" }} · {{ entry.user }} · {{ entry.object_repr }}
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="zenith-metric-note">Chưa có hoạt động nào.</p>
-                {% endif %}
             </div>
         </section>
     </div>
@@ -130,28 +109,24 @@
                 const [r, g, b] = parts;
                 return `rgba(${r}, ${g}, ${b}, ${alpha})`;
             };
-            const primaryColor = rgbaFromTriplet(primaryTriplet, 1);
-
             const revenueLabels = JSON.parse(document.getElementById('revenue-chart-labels').textContent);
             const revenueValues = JSON.parse(document.getElementById('revenue-chart-values').textContent);
-            const statusLabels = JSON.parse(document.getElementById('status-chart-labels').textContent);
-            const statusValues = JSON.parse(document.getElementById('status-chart-values').textContent);
 
             const revenueCanvas = document.getElementById('revenueChart');
             if (revenueCanvas) {
                 new Chart(revenueCanvas, {
-                    type: 'line',
+                    type: 'bar',
                     data: {
                         labels: revenueLabels,
                         datasets: [{
                             label: 'Doanh thu',
                             data: revenueValues,
-                            tension: 0.3,
-                            borderWidth: 3,
-                            pointRadius: 0,
-                            fill: true,
-                            backgroundColor: rgbaFromTriplet(primaryTriplet, 0.08),
-                            borderColor: primaryColor,
+                            borderWidth: 0,
+                            borderRadius: 10,
+                            backgroundColor: rgbaFromTriplet(primaryTriplet, 0.82),
+                            maxBarThickness: 30,
+                            categoryPercentage: 0.72,
+                            barPercentage: 0.92,
                         }]
                     },
                     options: {
@@ -169,8 +144,15 @@
                             }
                         },
                         scales: {
-                            x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
-                            y: { ticks: { callback: (v) => Number(v).toLocaleString('vi-VN') } }
+                            x: {
+                                ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+                                grid: { display: false },
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { callback: (v) => Number(v).toLocaleString('vi-VN') },
+                                grid: { color: 'rgba(15, 23, 42, 0.08)' },
+                            }
                         }
                     }
                 });
@@ -181,9 +163,9 @@
                 new Chart(statusCanvas, {
                     type: 'doughnut',
                     data: {
-                        labels: statusLabels,
+                        labels: ['Chờ xác nhận', 'Đã xác nhận', 'Đang giao', 'Hoàn tất', 'Đã hủy'],
                         datasets: [{
-                            data: statusValues,
+                            data: JSON.parse(document.getElementById('status-chart-values').textContent),
                             borderWidth: 0,
                             backgroundColor: [
                                 rgbaFromTriplet(primaryTriplet, 0.9),

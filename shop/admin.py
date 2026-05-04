@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django.contrib import messages
+from django import forms
+from django.db import models
 from django.db import transaction
+from django.utils.html import format_html
 from django.utils import timezone
 
 from .admin_site import admin_site
@@ -20,6 +23,15 @@ def _is_order_manager(user):
     return bool(user.is_superuser or _user_role(user) == UserProfile.ROLE_MANAGER)
 
 
+def _format_vnd(value):
+    amount = int((value or 0))
+    return f"{amount:,}".replace(",", ".") + " ₫"
+
+
+def _badge(label, tone):
+    return format_html('<span class="zenith-badge zenith-badge--{}">{}</span>', tone, label)
+
+
 @admin.register(Category, site=admin_site)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ("name", "is_active", "created_at")
@@ -30,12 +42,33 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Product, site=admin_site)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("name", "category", "price", "stock", "is_active", "created_at")
+    list_display = ("name", "category", "price_badge", "stock_badge", "active_badge", "created_at")
     list_filter = ("is_active", "category")
     search_fields = ("name", "description", "category__name")
     prepopulated_fields = {"slug": ("name",)}
     autocomplete_fields = ("category",)
     list_select_related = ("category",)
+    fieldsets = (
+        ("Thông tin sản phẩm", {"fields": ("category", "name", "slug", "description")}),
+        ("Giá và tồn kho", {"fields": ("price", "stock", "is_active")}),
+        ("Hình ảnh", {"fields": ("image",)}),
+        ("Hệ thống", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+    readonly_fields = ("created_at", "updated_at")
+    formfield_overrides = {models.TextField: {"widget": forms.Textarea(attrs={"rows": 5})}}
+
+    @admin.display(description="Giá")
+    def price_badge(self, obj):
+        return _badge(_format_vnd(obj.price), "price")
+
+    @admin.display(description="Tồn kho")
+    def stock_badge(self, obj):
+        tone = "danger" if obj.stock <= 0 else "warning" if obj.stock <= 10 else "success"
+        return _badge(str(obj.stock), tone)
+
+    @admin.display(description="Trạng thái")
+    def active_badge(self, obj):
+        return _badge("Đang hiển thị" if obj.is_active else "Đã ẩn", "success" if obj.is_active else "muted")
 
     def has_delete_permission(self, request, obj=None):
         if obj is not None and obj.orderitem_set.exists():
@@ -56,6 +89,14 @@ class CartItemInline(admin.TabularInline):
     extra = 0
 
 
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 0
+    can_delete = False
+    fields = ("product_name", "unit_price", "quantity", "line_total")
+    readonly_fields = fields
+
+
 @admin.register(Cart, site=admin_site)
 class CartAdmin(admin.ModelAdmin):
     list_display = ("user", "created_at", "updated_at")
@@ -66,11 +107,19 @@ class CartAdmin(admin.ModelAdmin):
 
 @admin.register(Order, site=admin_site)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("id", "tracking_code", "user", "full_name", "payment_method", "payment_status", "order_status", "total_amount", "created_at")
+    list_display = ("tracking_badge", "customer_badge", "payment_badge", "status_badge", "total_badge", "created_at")
     list_filter = ("payment_method", "payment_status", "order_status", "created_at")
     search_fields = ("full_name", "phone", "email")
     list_select_related = ("user",)
     actions = ["mark_paid", "mark_confirmed", "mark_shipping", "mark_completed", "mark_cancelled"]
+    inlines = [OrderItemInline]
+    fieldsets = (
+        ("Khách hàng", {"fields": ("user", "full_name", "phone", "email")}),
+        ("Giao hàng", {"fields": ("shipping_address", "province", "district", "ward", "street_address", "delivery_place_name", "delivery_latitude", "delivery_longitude")}),
+        ("Thanh toán", {"fields": ("payment_method", "payment_status", "subtotal", "shipping_fee", "total_amount")}),
+        ("Xử lý đơn", {"fields": ("order_status", "tracking_code", "note", "confirmed_at", "shipping_at", "completed_at", "cancelled_at", "customer_payment_notified_at")}),
+        ("Hệ thống", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
 
     def has_module_permission(self, request):
         return _is_order_staff(request.user)
@@ -89,6 +138,34 @@ class OrderAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         return tuple(field.name for field in Order._meta.fields)
+
+    @admin.display(description="Mã đơn")
+    def tracking_badge(self, obj):
+        return _badge(obj.display_tracking_code, "muted")
+
+    @admin.display(description="Khách hàng")
+    def customer_badge(self, obj):
+        return format_html("<strong>{}</strong><br><small>{}</small>", obj.full_name, obj.phone)
+
+    @admin.display(description="Thanh toán")
+    def payment_badge(self, obj):
+        tone = "success" if obj.payment_status == Order.PAYMENT_PAID else "warning" if obj.payment_status == Order.PAYMENT_PENDING else "danger"
+        return _badge(obj.get_payment_status_display(), tone)
+
+    @admin.display(description="Trạng thái")
+    def status_badge(self, obj):
+        tone_map = {
+            Order.STATUS_PENDING: "warning",
+            Order.STATUS_CONFIRMED: "info",
+            Order.STATUS_SHIPPING: "primary",
+            Order.STATUS_COMPLETED: "success",
+            Order.STATUS_CANCELLED: "danger",
+        }
+        return _badge(obj.get_order_status_display(), tone_map.get(obj.order_status, "muted"))
+
+    @admin.display(description="Tổng tiền")
+    def total_badge(self, obj):
+        return _badge(_format_vnd(obj.total_amount), "price")
 
     def get_actions(self, request):
         actions = super().get_actions(request)

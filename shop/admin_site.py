@@ -6,12 +6,12 @@ from django.db.models.functions import Coalesce
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
-from django.contrib.admin import AdminSite
+from unfold.sites import UnfoldAdminSite
 
 from .models import Order, Product
 
 
-class ShopAdminSite(AdminSite):
+class ShopAdminSite(UnfoldAdminSite):
     site_header = "ZENITH FITNESS"
     site_title = "ZENITH FITNESS Admin"
     index_title = "Dashboard bán hàng"
@@ -47,8 +47,12 @@ class ShopAdminSite(AdminSite):
         revenue_values = []
         for offset in range(30):
             day = start_day + timedelta(days=offset)
-            revenue_labels.append(day.isoformat())
+            revenue_labels.append(day.strftime("%d/%m"))
             revenue_values.append(int(revenue_by_day.get(day, Decimal("0"))))
+
+        peak_index = max(range(len(revenue_values)), key=lambda index: revenue_values[index]) if revenue_values else None
+        peak_label = revenue_labels[peak_index] if peak_index is not None and revenue_values[peak_index] > 0 else "Chưa có dữ liệu"
+        peak_value = revenue_values[peak_index] if peak_index is not None else 0
 
         total_orders = Order.objects.count()
         recent_orders_count = Order.objects.filter(created_at__gte=recent_window).count()
@@ -96,13 +100,8 @@ class ShopAdminSite(AdminSite):
                     "note": f"{Product.objects.filter(is_active=True, stock__lte=10).count()} sản phẩm sắp hết hàng",
                 },
             ],
-            "order_status_breakdown": [
-                {"label": "Chờ xác nhận", "count": pending_orders},
-                {"label": "Đã xác nhận", "count": confirmed_orders},
-                {"label": "Đang giao", "count": shipping_orders},
-                {"label": "Hoàn tất", "count": completed_count},
-                {"label": "Đã hủy", "count": cancelled_orders},
-            ],
+            "revenue_total_display": format_vnd(revenue_total),
+            "total_orders_count": total_orders,
             "revenue_chart_labels": revenue_labels,
             "revenue_chart_values": revenue_values,
             "status_chart_labels": ["Chờ xác nhận", "Đã xác nhận", "Đang giao", "Hoàn tất", "Đã hủy"],
