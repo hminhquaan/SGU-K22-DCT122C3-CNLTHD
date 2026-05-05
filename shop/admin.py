@@ -6,6 +6,8 @@ from django.db import transaction
 from django.utils.html import format_html
 from django.utils import timezone
 
+from unfold.admin import ModelAdmin, TabularInline
+
 from .admin_site import admin_site
 from .models import Cart, CartItem, Category, Order, OrderItem, Product, UserProfile
 
@@ -29,11 +31,34 @@ def _format_vnd(value):
 
 
 def _badge(label, tone):
-    return format_html('<span class="zenith-badge zenith-badge--{}">{}</span>', tone, label)
+    tone_classes = {
+        "price": "bg-primary-600 text-white",
+        "primary": "bg-primary-100 text-primary-700 dark:bg-primary-950/40 dark:text-primary-200",
+        "success": "bg-success-100 text-success-800 dark:bg-success-950/40 dark:text-success-200",
+        "warning": "bg-warning-100 text-warning-800 dark:bg-warning-950/40 dark:text-warning-200",
+        "danger": "bg-danger-100 text-danger-800 dark:bg-danger-950/40 dark:text-danger-200",
+        "info": "bg-info-100 text-info-800 dark:bg-info-950/40 dark:text-info-200",
+        "muted": "bg-base-100 text-base-700 dark:bg-base-800 dark:text-base-200",
+    }
+    classes = tone_classes.get(tone, tone_classes["primary"])
+    return format_html(
+        '<span class="inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold {}">{}</span>',
+        classes,
+        label,
+    )
+
+
+class ZenithModelAdmin(ModelAdmin):
+    list_filter_sheet = True
+    list_fullwidth = True
+
+
+class ZenithTabularInline(TabularInline):
+    extra = 0
 
 
 @admin.register(Category, site=admin_site)
-class CategoryAdmin(admin.ModelAdmin):
+class CategoryAdmin(ZenithModelAdmin):
     list_display = ("name", "is_active", "created_at")
     list_filter = ("is_active",)
     search_fields = ("name",)
@@ -41,7 +66,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(Product, site=admin_site)
-class ProductAdmin(admin.ModelAdmin):
+class ProductAdmin(ZenithModelAdmin):
     list_display = ("name", "category", "price_badge", "stock_badge", "active_badge", "created_at")
     list_filter = ("is_active", "category")
     search_fields = ("name", "description", "category__name")
@@ -79,26 +104,24 @@ class ProductAdmin(admin.ModelAdmin):
         blocked = queryset.filter(orderitem__isnull=False).distinct()
         allowed = queryset.exclude(pk__in=blocked.values_list("pk", flat=True))
         if blocked.exists():
-            messages.error(request, "Có sản phẩm đã phát sinh giao dịch nên không thể xóa. Hãy chuyển sang ẩn sản phẩm (tắt hiển thị) thay vì xóa.")
+            messages.error(request, "Có sản phẩm đã phát sinh giao dịch nên chưa thể xóa. Bạn có thể ẩn sản phẩm để giữ lịch sử bán hàng.")
         if allowed.exists():
             super().delete_queryset(request, allowed)
 
 
-class CartItemInline(admin.TabularInline):
+class CartItemInline(ZenithTabularInline):
     model = CartItem
-    extra = 0
 
 
-class OrderItemInline(admin.TabularInline):
+class OrderItemInline(ZenithTabularInline):
     model = OrderItem
-    extra = 0
     can_delete = False
     fields = ("product_name", "unit_price", "quantity", "line_total")
     readonly_fields = fields
 
 
 @admin.register(Cart, site=admin_site)
-class CartAdmin(admin.ModelAdmin):
+class CartAdmin(ZenithModelAdmin):
     list_display = ("user", "created_at", "updated_at")
     inlines = [CartItemInline]
     search_fields = ("user__username", "user__email")
@@ -106,7 +129,7 @@ class CartAdmin(admin.ModelAdmin):
 
 
 @admin.register(Order, site=admin_site)
-class OrderAdmin(admin.ModelAdmin):
+class OrderAdmin(ZenithModelAdmin):
     list_display = ("tracking_badge", "customer_badge", "payment_badge", "status_badge", "total_badge", "created_at")
     list_filter = ("payment_method", "payment_status", "order_status", "created_at")
     search_fields = ("full_name", "phone", "email")
@@ -145,7 +168,11 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.display(description="Khách hàng")
     def customer_badge(self, obj):
-        return format_html("<strong>{}</strong><br><small>{}</small>", obj.full_name, obj.phone)
+        return format_html(
+            '<div class="flex flex-col items-start gap-0.5"><strong class="text-sm font-semibold text-base-950 dark:text-base-50">{}</strong><span class="text-xs text-font-subtle-light dark:text-font-subtle-dark">{}</span></div>',
+            obj.full_name,
+            obj.phone,
+        )
 
     @admin.display(description="Thanh toán")
     def payment_badge(self, obj):
@@ -286,13 +313,13 @@ class OrderAdmin(admin.ModelAdmin):
 
 
 @admin.register(OrderItem, site=admin_site)
-class OrderItemAdmin(admin.ModelAdmin):
+class OrderItemAdmin(ZenithModelAdmin):
     list_display = ("order", "product_name", "unit_price", "quantity", "line_total")
     search_fields = ("product_name",)
 
 
 @admin.register(UserProfile, site=admin_site)
-class UserProfileAdmin(admin.ModelAdmin):
+class UserProfileAdmin(ZenithModelAdmin):
     list_display = ("user", "role")
     list_filter = ("role",)
     search_fields = ("user__username", "user__email")

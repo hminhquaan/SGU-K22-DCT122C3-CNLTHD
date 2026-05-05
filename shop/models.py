@@ -341,6 +341,9 @@ class Order(models.Model):
             self.confirmed_at = self.confirmed_at or now
             self.shipping_at = self.shipping_at or now
             self.completed_at = now
+            if self.payment_method == self.METHOD_COD and self.payment_status != self.PAYMENT_PAID:
+                self.payment_status = self.PAYMENT_PAID
+                update_fields.append("payment_status")
         elif status == self.STATUS_CANCELLED:
             if self.is_online_payment and self.payment_status == self.PAYMENT_PENDING:
                 self.payment_status = self.PAYMENT_CANCELLED

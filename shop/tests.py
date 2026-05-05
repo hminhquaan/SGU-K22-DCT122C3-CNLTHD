@@ -138,6 +138,31 @@ class ShopModelTests(TestCase):
         self.assertEqual(order.order_status, Order.STATUS_CANCELLED)
         self.assertEqual(order.payment_status, Order.PAYMENT_PENDING)
 
+    def test_completed_cod_order_marks_paid(self):
+        user = User.objects.create_user(username="buyer4", password="pass12345")
+        order = Order.objects.create(
+            user=user,
+            full_name="Buyer",
+            phone="0901234567",
+            email="buyer4@example.com",
+            province="TP. Hồ Chí Minh",
+            district="Quận 1",
+            ward="Bến Nghé",
+            street_address="123 Lê Lợi",
+            shipping_address="123 Lê Lợi, Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+            subtotal=Decimal("350000.00"),
+            shipping_fee=Decimal("30000.00"),
+            total_amount=Decimal("380000.00"),
+            payment_method=Order.METHOD_COD,
+            payment_status=Order.PAYMENT_PENDING,
+            order_status=Order.STATUS_SHIPPING,
+        )
+
+        order.mark_status(Order.STATUS_COMPLETED)
+        order.refresh_from_db()
+        self.assertEqual(order.order_status, Order.STATUS_COMPLETED)
+        self.assertEqual(order.payment_status, Order.PAYMENT_PAID)
+
 
 class ShopFormTests(TestCase):
     def test_checkout_form_rejects_short_phone(self):
@@ -227,7 +252,7 @@ class ShopViewTests(TestCase):
                 "district": "Quận 1",
                 "ward": "Bến Nghé",
                 "street_address": "123 Lê Lợi",
-                "payment_method": "MOMO",
+                "payment_method": "BANK_TRANSFER",
                 "note": "",
             },
         )
@@ -283,7 +308,7 @@ class ShopViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["focused_order"].id, order.id)
 
-    def test_manual_payment_confirmation_only_notifies(self):
+    def test_manual_payment_confirmation_marks_paid(self):
         self.client.login(username="customer", password="pass12345")
         cart = Cart.objects.create(user=self.user)
         CartItem.objects.create(cart=cart, product=self.product, quantity=1)
@@ -310,7 +335,8 @@ class ShopViewTests(TestCase):
         response = self.client.post(reverse("order_payment", args=[order.id]))
         self.assertEqual(response.status_code, 302)
         order.refresh_from_db()
-        self.assertEqual(order.payment_status, Order.PAYMENT_PENDING)
+        self.assertEqual(order.payment_status, Order.PAYMENT_PAID)
+        self.assertEqual(order.order_status, Order.STATUS_CONFIRMED)
         self.assertIsNotNone(order.customer_payment_notified_at)
 
     def test_checkout_persists_shipping_fee(self):
@@ -359,24 +385,21 @@ class ShopViewTests(TestCase):
 
     def test_sandbox_success_marks_order_paid(self):
         self.client.login(username="customer", password="pass12345")
-        cart = Cart.objects.create(user=self.user)
-        CartItem.objects.create(cart=cart, product=self.product, quantity=1)
-
-        self.client.post(
-            reverse("checkout"),
-            data={
-                "full_name": "Customer",
-                "phone": "0901234567",
-                "email": "customer@example.com",
-                "province": "TP. Hồ Chí Minh",
-                "district": "Quận 1",
-                "ward": "Bến Nghé",
-                "street_address": "123 Lê Lợi",
-                "payment_method": "MOMO",
-                "note": "",
-            },
+        order = Order.objects.create(
+            user=self.user,
+            full_name="Customer",
+            phone="0901234567",
+            email="customer@example.com",
+            province="TP. Hồ Chí Minh",
+            district="Quận 1",
+            ward="Bến Nghé",
+            street_address="123 Lê Lợi",
+            shipping_address="123 Lê Lợi, Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+            subtotal=Decimal("500000.00"),
+            shipping_fee=Decimal("30000.00"),
+            total_amount=Decimal("530000.00"),
+            payment_method=Order.METHOD_MOMO,
         )
-        order = Order.objects.get()
         self.assertEqual(order.payment_status, Order.PAYMENT_PENDING)
 
         response = self.client.post(reverse("payment_sandbox", args=["momo", order.id]), data={"action": "success"})
@@ -387,24 +410,30 @@ class ShopViewTests(TestCase):
 
     def test_sandbox_cancel_restores_stock(self):
         self.client.login(username="customer", password="pass12345")
-        cart = Cart.objects.create(user=self.user)
-        CartItem.objects.create(cart=cart, product=self.product, quantity=1)
-
-        self.client.post(
-            reverse("checkout"),
-            data={
-                "full_name": "Customer",
-                "phone": "0901234567",
-                "email": "customer@example.com",
-                "province": "TP. Hồ Chí Minh",
-                "district": "Quận 1",
-                "ward": "Bến Nghé",
-                "street_address": "123 Lê Lợi",
-                "payment_method": "ZALOPAY",
-                "note": "",
-            },
+        self.product.stock = 4
+        self.product.save(update_fields=["stock"])
+        order = Order.objects.create(
+            user=self.user,
+            full_name="Customer",
+            phone="0901234567",
+            email="customer@example.com",
+            province="TP. Hồ Chí Minh",
+            district="Quận 1",
+            ward="Bến Nghé",
+            street_address="123 Lê Lợi",
+            shipping_address="123 Lê Lợi, Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+            subtotal=Decimal("500000.00"),
+            shipping_fee=Decimal("30000.00"),
+            total_amount=Decimal("530000.00"),
+            payment_method=Order.METHOD_ZALOPAY,
         )
-        order = Order.objects.get()
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=1,
+            unit_price=self.product.price,
+            line_total=self.product.price,
+        )
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock, 4)
 
@@ -676,24 +705,30 @@ class ShopViewTests(TestCase):
     )
     def test_vnpay_cancel_restores_stock_and_marks_order_cancelled(self):
         self.client.login(username="customer", password="pass12345")
-        cart = Cart.objects.create(user=self.user)
-        CartItem.objects.create(cart=cart, product=self.product, quantity=1)
-
-        self.client.post(
-            reverse("checkout"),
-            data={
-                "full_name": "Customer",
-                "phone": "0901234567",
-                "email": "customer@example.com",
-                "province": "TP. Hồ Chí Minh",
-                "district": "Quận 1",
-                "ward": "Bến Nghé",
-                "street_address": "123 Lê Lợi",
-                "payment_method": "VNPAY",
-                "note": "",
-            },
+        self.product.stock = 4
+        self.product.save(update_fields=["stock"])
+        order = Order.objects.create(
+            user=self.user,
+            full_name="Customer",
+            phone="0901234567",
+            email="customer@example.com",
+            province="TP. Hồ Chí Minh",
+            district="Quận 1",
+            ward="Bến Nghé",
+            street_address="123 Lê Lợi",
+            shipping_address="123 Lê Lợi, Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+            subtotal=Decimal("500000.00"),
+            shipping_fee=Decimal("30000.00"),
+            total_amount=Decimal("530000.00"),
+            payment_method=Order.METHOD_VNPAY,
         )
-        order = Order.objects.get()
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=1,
+            unit_price=self.product.price,
+            line_total=self.product.price,
+        )
         self.product.refresh_from_db()
         self.assertEqual(self.product.stock, 4)
 
@@ -714,24 +749,30 @@ class ShopViewTests(TestCase):
     )
     def test_vnpay_return_cancelled_marks_order_failed(self):
         self.client.login(username="customer", password="pass12345")
-        cart = Cart.objects.create(user=self.user)
-        CartItem.objects.create(cart=cart, product=self.product, quantity=1)
-
-        self.client.post(
-            reverse("checkout"),
-            data={
-                "full_name": "Customer",
-                "phone": "0901234567",
-                "email": "customer@example.com",
-                "province": "TP. Hồ Chí Minh",
-                "district": "Quận 1",
-                "ward": "Bến Nghé",
-                "street_address": "123 Lê Lợi",
-                "payment_method": "VNPAY",
-                "note": "",
-            },
+        self.product.stock = 4
+        self.product.save(update_fields=["stock"])
+        order = Order.objects.create(
+            user=self.user,
+            full_name="Customer",
+            phone="0901234567",
+            email="customer@example.com",
+            province="TP. Hồ Chí Minh",
+            district="Quận 1",
+            ward="Bến Nghé",
+            street_address="123 Lê Lợi",
+            shipping_address="123 Lê Lợi, Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+            subtotal=Decimal("500000.00"),
+            shipping_fee=Decimal("30000.00"),
+            total_amount=Decimal("530000.00"),
+            payment_method=Order.METHOD_VNPAY,
         )
-        order = Order.objects.get()
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=1,
+            unit_price=self.product.price,
+            line_total=self.product.price,
+        )
 
         payload = {
             "vnp_Amount": "53000000",

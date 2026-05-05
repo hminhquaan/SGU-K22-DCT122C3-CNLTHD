@@ -25,6 +25,7 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -33,6 +34,46 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "shop",
 ]
+
+UNFOLD = {
+    "SITE_TITLE": "Zenith Fitness Admin",
+    "SITE_HEADER": "Zenith Fitness",
+    "SITE_SUBHEADER": "Bảng điều khiển bán hàng",
+    "SITE_URL": "/",
+    "SITE_SYMBOL": "fitness_center",
+    "SITE_LOGO": None,
+    "SITE_FAVICONS": [],
+    "SHOW_VIEW_ON_SITE": True,
+    "COLORS": {
+        "base": {
+            "50": "oklch(98.5% .002 247.839)",
+            "100": "oklch(96.7% .003 264.542)",
+            "200": "oklch(92.8% .006 264.531)",
+            "300": "oklch(87.2% .01 258.338)",
+            "400": "oklch(70.7% .022 261.325)",
+            "500": "oklch(55.1% .027 264.364)",
+            "600": "oklch(44.6% .03 256.802)",
+            "700": "oklch(37.3% .034 259.733)",
+            "800": "oklch(27.8% .033 256.848)",
+            "900": "oklch(21% .034 264.665)",
+            "950": "oklch(13% .028 261.692)",
+        },
+        "primary": {
+            "50": "#eff6ff",
+            "100": "#dbeafe",
+            "200": "#bfdbfe",
+            "300": "#93c5fd",
+            "400": "#60a5fa",
+            "500": "#3b82f6",
+            "600": "#2563eb",
+            "700": "#1d4ed8",
+            "800": "#1e40af",
+            "900": "#1e3a8a",
+            "950": "#172554",
+        },
+    },
+    "DASHBOARD_CALLBACK": "shop.admin_site.dashboard_callback",
+}
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

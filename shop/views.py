@@ -929,6 +929,9 @@ def order_payment(request, order_id):
 
     payment_details = order.payment_details
     payment_url = _build_gateway_payment_url(request, order) if _is_gateway_payment_method(order.payment_method) else ""
+    sandbox_action_url = ""
+    if order.payment_method in {Order.METHOD_MOMO, Order.METHOD_ZALOPAY}:
+        sandbox_action_url = reverse("payment_sandbox", args=[order.payment_method.lower(), order.id])
 
     show_payment_page = request.GET.get("show") == "1"
 
@@ -948,7 +951,10 @@ def order_payment(request, order_id):
             order.customer_payment_notified_at = timezone.now()
             order.save(update_fields=["customer_payment_notified_at", "updated_at"])
 
-        messages.success(request, "Đã ghi nhận yêu cầu thanh toán. Bộ phận bán hàng sẽ đối soát và xác nhận đơn sớm nhất.")
+        if _finalize_payment_success(order):
+            messages.success(request, "Đã cập nhật trạng thái đã thanh toán cho đơn hàng.")
+        else:
+            messages.info(request, "Đơn hàng đã ở trạng thái cuối cùng trước đó.")
         return redirect(_orders_lookup_url(tracking_code=order.display_tracking_code))
 
     return render(
@@ -959,6 +965,7 @@ def order_payment(request, order_id):
             "payment_details": payment_details,
             "tracking_url": _orders_lookup_url(tracking_code=order.display_tracking_code),
             "payment_url": payment_url,
+            "sandbox_action_url": sandbox_action_url,
         },
     )
 

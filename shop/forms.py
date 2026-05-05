@@ -175,9 +175,6 @@ class CheckoutForm(forms.Form):
         choices=(
             ("COD", "Thanh toán khi nhận hàng"),
             ("BANK_TRANSFER", "Chuyển khoản ngân hàng"),
-            ("MOMO", "Ví MoMo"),
-            ("ZALOPAY", "Ví ZaloPay"),
-            ("VNPAY", "VNPay"),
         ),
         widget=forms.Select(attrs={"class": "w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-accent"}),
         initial="COD",
@@ -186,16 +183,6 @@ class CheckoutForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={"rows": 2, "class": "w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-accent", "placeholder": "Ghi chú"}),
     )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        configured_vnpay = all(getattr(settings, name, "") for name in ("VNPAY_URL", "VNPAY_TMN_CODE", "VNPAY_HASH_SECRET"))
-        if not configured_vnpay:
-            self.fields["payment_method"].choices = tuple(
-                (value, label)
-                for value, label in self.fields["payment_method"].choices
-                if value != "VNPAY"
-            )
 
     def clean_phone(self):
         phone = self.cleaned_data["phone"].strip()
