@@ -15,7 +15,6 @@ Website thương mại điện tử bán dụng cụ và phụ kiện thể thao
 - Changelist đơn hàng/sản phẩm có badge, bảng và bộ lọc được tinh chỉnh để dễ theo dõi nghiệp vụ.
 - Form sửa đơn hàng được chia khối rõ hơn cho giao hàng, thanh toán và xử lý trạng thái.
 - Giá và tổng tiền hiển thị theo định dạng VND thống nhất trên cả storefront và admin.
-- Gợi ý địa chỉ thật khi nhập, ưu tiên Google Places nếu có `GOOGLE_MAPS_API_KEY`.
 - Mini map để chọn trực tiếp vị trí giao hàng, kéo thả pin hoặc lấy vị trí hiện tại.
 - Script khởi tạo dữ liệu và file SQL hỗ trợ dựng hệ thống nhanh.
 
