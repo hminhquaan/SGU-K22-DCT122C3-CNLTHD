@@ -18,7 +18,7 @@ Website thương mại điện tử bán dụng cụ và phụ kiện thể thao
 - Database: MySQL
 - Giao diện: Tailwind CSS CDN, Alpine.js CDN
 - Bản đồ: Leaflet + OpenStreetMap
-- Thanh toán: COD + Chuyển khoản
+- Thanh toán: COD
 - Quản trị: Unfold Admin, Chart.js cho dashboard doanh thu, CSS tuỳ biến riêng cho trang quản trị
 
 ## Cấu trúc dự án
