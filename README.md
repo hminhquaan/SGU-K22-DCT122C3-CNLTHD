@@ -88,11 +88,6 @@ MYSQL_USER=root
 MYSQL_PASSWORD=your_password
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
-<<<<<<< HEAD
-=======
-
-GOOGLE_MAPS_API_KEY=your_google_maps_api_key
->>>>>>> 6ccdce73018b59a90cc5399a8301dc39a467dfaa
 ```
 
 ### 3. Tạo database
@@ -106,13 +101,7 @@ python manage.py makemigrations
 python manage.py migrate
 ```
 
-### 5. Tạo tài khoản quản trị
-
-```powershell
-python manage.py createsuperuser
-```
-
-### 6. Nạp dữ liệu khởi tạo
+### 5. Nạp dữ liệu khởi tạo
 
 Bạn có thể dùng một trong hai cách sau:
 
@@ -126,7 +115,7 @@ hoặc import trực tiếp file SQL:
 seed_demo_data.sql
 ```
 
-### 7. Chạy ứng dụng
+### 6. Chạy ứng dụng
 
 ```powershell
 python manage.py runserver
