@@ -10,7 +10,6 @@ Website thương mại điện tử bán dụng cụ và phụ kiện thể thao
 - Giỏ hàng theo tài khoản đăng nhập, hỗ trợ cập nhật số lượng và xoá sản phẩm.
 - Quy trình checkout có kiểm tra thông tin giao hàng và tạo đơn hàng theo nghiệp vụ thực tế.
 - Theo dõi trạng thái đơn hàng và mã tracking.
-- Thanh toán VNPay sandbox, chỉ ghi nhận thành công khi có xác nhận hợp lệ.
 - Phân quyền người dùng theo vai trò `CUSTOMER`, `STAFF`, `MANAGER`.
 - Trang quản trị riêng cho sản phẩm và đơn hàng, dùng giao diện đồng bộ với website bán hàng.
 - Changelist đơn hàng/sản phẩm có badge, bảng và bộ lọc được tinh chỉnh để dễ theo dõi nghiệp vụ.
@@ -26,8 +25,7 @@ Website thương mại điện tử bán dụng cụ và phụ kiện thể thao
 - Database: MySQL
 - Giao diện: Tailwind CSS CDN, Alpine.js CDN
 - Bản đồ: Leaflet + OpenStreetMap
-- Địa chỉ: Google Places API, Google Geocoding API, Nominatim fallback
-- Thanh toán: VNPay sandbox
+- Thanh toán: COD + Chuyển khoản
 - Quản trị: Unfold Admin, Chart.js cho dashboard doanh thu, CSS tuỳ biến riêng cho trang quản trị
 
 ## Cấu trúc dự án
@@ -90,6 +88,11 @@ MYSQL_USER=root
 MYSQL_PASSWORD=your_password
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
+<<<<<<< HEAD
+=======
+
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+>>>>>>> 6ccdce73018b59a90cc5399a8301dc39a467dfaa
 ```
 
 ### 3. Tạo database
