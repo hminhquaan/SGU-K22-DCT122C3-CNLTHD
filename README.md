@@ -90,12 +90,6 @@ MYSQL_USER=root
 MYSQL_PASSWORD=your_password
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
-
-VNPAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-VNPAY_TMN_CODE=your_tmn_code
-VNPAY_HASH_SECRET=your_hash_secret
-
-GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 
 ### 3. Tạo database
