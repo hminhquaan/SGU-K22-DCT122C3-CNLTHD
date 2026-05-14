@@ -2,7 +2,7 @@
 
 ## ZENITH FITNESS
 
-Website thương mại điện tử bán dụng cụ và phụ kiện thể thao được xây dựng bằng Django, MySQL, Tailwind CDN và Alpine.js. Hệ thống tập trung vào trải nghiệm mua hàng thực tế và vận hành bán hàng: giỏ hàng, đặt hàng, theo dõi đơn, thanh toán VNPay sandbox, phân quyền người dùng, chọn vị trí giao hàng chính xác trên mini map và trang quản trị được thiết kế riêng cho nghiệp vụ.
+Website thương mại điện tử bán dụng cụ và phụ kiện thể thao được xây dựng bằng Django, MySQL, Tailwind CDN và Alpine.js. Hệ thống tập trung vào trải nghiệm mua hàng thực tế và vận hành bán hàng: giỏ hàng, đặt hàng, theo dõi đơn, phân quyền người dùng, chọn vị trí giao hàng chính xác trên mini map và trang quản trị được thiết kế riêng cho nghiệp vụ.
 
 ## Tính năng chính
 
