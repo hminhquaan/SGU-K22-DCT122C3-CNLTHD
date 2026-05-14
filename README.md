@@ -7,16 +7,10 @@ Website thương mại điện tử bán dụng cụ và phụ kiện thể thao
 ## Tính năng chính
 
 - Danh mục sản phẩm, chi tiết sản phẩm và giao diện mua hàng responsive.
-- Giỏ hàng theo tài khoản đăng nhập, hỗ trợ cập nhật số lượng và xoá sản phẩm.
-- Quy trình checkout có kiểm tra thông tin giao hàng và tạo đơn hàng theo nghiệp vụ thực tế.
 - Theo dõi trạng thái đơn hàng và mã tracking.
 - Phân quyền người dùng theo vai trò `CUSTOMER`, `STAFF`, `MANAGER`.
 - Trang quản trị riêng cho sản phẩm và đơn hàng, dùng giao diện đồng bộ với website bán hàng.
-- Changelist đơn hàng/sản phẩm có badge, bảng và bộ lọc được tinh chỉnh để dễ theo dõi nghiệp vụ.
-- Form sửa đơn hàng được chia khối rõ hơn cho giao hàng, thanh toán và xử lý trạng thái.
-- Giá và tổng tiền hiển thị theo định dạng VND thống nhất trên cả storefront và admin.
 - Mini map để chọn trực tiếp vị trí giao hàng, kéo thả pin hoặc lấy vị trí hiện tại.
-- Script khởi tạo dữ liệu và file SQL hỗ trợ dựng hệ thống nhanh.
 
 ## Công nghệ sử dụng
 
